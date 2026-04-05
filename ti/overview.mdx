@@ -1,0 +1,37 @@
+---
+title: "Threat Intelligence Overview"
+description: "IOC feeds, TTP frameworks, and investigation resources for cyber threat intelligence"
+---
+
+This section of the awesome-lists collection consolidates the key resources used in day-to-day CTI operations: curated indicator feeds from security vendors, adversary modeling frameworks, and investigation platforms for enriching and contextualizing alerts.
+
+## What's available
+
+<CardGroup cols={2}>
+  <Card title="IOC Feeds & Blacklists" icon="shield-halved" href="/ti/ioc-feeds">
+    Curated indicator feeds from abuse.ch, Unit42, Cisco Talos, Sophos, ESET, Elastic, and malware-specific Pr0xylife feeds. Includes ransomware trackers and blocklists.
+  </Card>
+  <Card title="TTP Frameworks & Models" icon="sitemap" href="/ti/frameworks-and-models">
+    MITRE ATT&CK, D3FEND, CAPEC, Cyber Kill Chain, Unified Kill Chain, Pyramid of Pain, APTmap, and CVE/vulnerability frameworks.
+  </Card>
+  <Card title="Investigation Tools" icon="magnifying-glass" href="/ti/investigation-tools">
+    Platforms for investigating IPs, domains, URLs, files, and email headers. Covers sandboxes, WHOIS/DNS tools, certificate transparency, and browser extension analysis.
+  </Card>
+  <Card title="ThreatIntel Reports" icon="book-open" href="https://github.com/mthcht/ThreatIntel-Reports">
+    Consolidated repository of threat intelligence reports with a searchable interface at mthcht.github.io/ThreatIntel-Reports.
+  </Card>
+</CardGroup>
+
+## How this collection supports CTI operations
+
+The resources here are organized around three core CTI workflows:
+
+**Indicator management** — The IOC feeds section aggregates dozens of external feeds (many machine-readable) that can be ingested directly into a SIEM as lookup sources, used to enrich alerts, or consumed via MISP/STIX formats.
+
+**Adversary modeling** — The frameworks section covers the taxonomies and models used to describe, categorize, and track adversary behavior: from the broad strokes of kill chains to fine-grained ATT&CK technique mapping and threat group tracking matrices.
+
+**Artifact investigation** — The investigation tools section provides point-and-click enrichment platforms for the full range of observable types: IPs, domains, URLs, file hashes, email headers, and browser extensions.
+
+<Note>
+  The [ThreatIntel-Reports](https://github.com/mthcht/ThreatIntel-Reports) project provides a consolidated, searchable collection of threat intelligence reports from across the industry. Use the [search interface](https://mthcht.github.io/ThreatIntel-Reports/) to find reports relevant to a specific threat actor, malware family, or technique.
+</Note>

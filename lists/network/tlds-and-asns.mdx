@@ -1,0 +1,151 @@
+---
+title: "Suspicious TLDs & ASNs"
+description: "High-risk top-level domains and autonomous system numbers associated with malicious infrastructure"
+---
+
+Two of the most consistent infrastructure signals in threat hunting are the top-level domain (TLD) of a destination and the autonomous system number (ASN) that hosts it. Attackers deliberately choose cheap, permissive, or loosely-governed TLDs and hosting providers because they offer fast registration, minimal identity verification, and slow takedown processes.
+
+## Suspicious TLDs
+
+A TLD is the rightmost label in a domain name (`.icu`, `.tk`, `.ml`, etc.). Certain TLDs are disproportionately associated with phishing, malware distribution, and C2 infrastructure because:
+
+- Registration is free or near-free, lowering the cost of disposable domains
+- Registry operators have weak or no abuse reporting procedures
+- They are rarely used for legitimate enterprise traffic, making them high-signal when they appear in network logs
+
+<Info>
+  The `suspicious_tlds_list.csv` file contains ~148 TLD entries drawn from Unit 42, Netcraft, and cybercrime reporting data, each annotated with severity and category labels.
+</Info>
+
+### Download
+
+<CardGroup cols={2}>
+  <Card title="suspicious_tlds_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_tlds_list.csv">
+    Main curated list — ~148 TLDs with severity metadata
+  </Card>
+  <Card title="Browse on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_tlds_list.csv">
+    File history and raw content
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="Lists/TLDs/ directory" icon="folder-open" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/TLDs/">
+    Additional TLD lists including phishing stats from cybercrime.info
+  </Card>
+  <Card title="latest_bad_tlds_phishing_cybercrimeinfocenter_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/TLDs/latest_bad_tlds_phishing_cybercrimeinfocenter_list.csv">
+    Auto-updated phishing TLD rankings from cybercrime.info (with domain counts and phishing scores)
+  </Card>
+</CardGroup>
+
+### CSV structure — suspicious_tlds_list.csv
+
+| Column | Description |
+|---|---|
+| `url_domain` | TLD pattern (e.g. `*.icu`) |
+| `metadata_tld` | TLD label without leading dot |
+| `metadata_category` | Abuse type: `Malware`, `Phishing`, `C2`, `Suspicious` |
+| `metadata_popularity` | Legitimate usage popularity: `Low`, `Medium`, `High` |
+| `metadata_severity` | Risk level: `Critical`, `High`, `Medium`, `Low` |
+| `metadata_comment` | Context and observed abuse patterns |
+| `metadata_link` | External reference |
+
+**Example rows:**
+
+```csv
+url_domain,metadata_tld,metadata_category,metadata_popularity,metadata_severity,metadata_comment,metadata_link
+*.icu,icu,Malware,Medium,Critical,Often abused for phishing and malware distribution,https://unit42.paloaltonetworks.com/top-level-domains-cybercrime/
+*.ml,ml,Phishing - Malware - C2,Low,Critical,Frequently abused TLD,https://unit42.paloaltonetworks.com/top-level-domains-cybercrime/
+*.tk,tk,Phishing - C2,Low,Critical,Notorious for phishing due to free registration,https://unit42.paloaltonetworks.com/top-level-domains-cybercrime/
+```
+
+### Example Splunk query using TLD lookup
+
+Upload `suspicious_tlds_list.csv` as a Splunk lookup table, then:
+
+```spl
+index=network sourcetype=proxy OR sourcetype=dns
+| rex field=dest_host "\.(?<tld>[^.]+)$"
+| eval url_domain="*.".tld
+| lookup suspicious_tlds_list.csv url_domain OUTPUT metadata_category metadata_severity metadata_comment
+| where isnotnull(metadata_severity)
+| eval risk=case(
+    metadata_severity="Critical", 4,
+    metadata_severity="High",     3,
+    metadata_severity="Medium",   2,
+    true(),                       1
+  )
+| table _time src_ip dest_host tld metadata_category metadata_severity metadata_comment
+| sort -risk
+```
+
+Focus on critical-severity TLDs for alerting:
+
+```spl
+index=network sourcetype=proxy
+| rex field=dest_host "\.(?<tld>[^.]+)$"
+| eval url_domain="*.".tld
+| lookup suspicious_tlds_list.csv url_domain OUTPUT metadata_severity metadata_category
+| where metadata_severity="Critical"
+| stats dc(dest_host) as unique_domains, count as requests by src_ip metadata_category
+| where requests > 5
+```
+
+---
+
+## Suspicious ASNs
+
+An ASN (Autonomous System Number) identifies a network operator on the internet. Certain ASNs are persistently associated with bulletproof hosting, spam, phishing infrastructure, and malware distribution because their operators have weak or non-existent abuse handling policies.
+
+### Download
+
+<CardGroup cols={2}>
+  <Card title="bad_asn_static_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/ASNs/bad_asn_static_list.csv">
+    Manually curated high-confidence bad ASNs
+  </Card>
+  <Card title="spamhaus_asn_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/ASNs/spamhaus_asn_list.csv">
+    ASNs from Spamhaus DROP/EDROP with RIR and country data
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="latest_bad_asn_phishing_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/ASNs/latest_bad_asn_phishing_list.csv">
+    Auto-updated phishing ASN rankings from cybercrime.info
+  </Card>
+  <Card title="Lists/ASNs/ directory" icon="folder-open" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/ASNs/">
+    Full directory including IP ranges per ASN and Maxmind GeoIP correlation DB
+  </Card>
+</CardGroup>
+
+### ASN sub-resources
+
+| Resource | Description |
+|---|---|
+| `ASN_IP_Ranges/` | Per-ASN IP prefix files for enriching firewall/proxy logs |
+| `_ALL_BAD_ASN_IP_Ranges_List.csv` | Combined IP ranges for all flagged ASNs |
+| `asn_metadata_infos.csv` | ASN metadata with severity, confidence, false positive rate, and tags |
+| `evild3ad-ASN-BlackList.csv` | Evil Domain / evild3ad community ASN blocklist |
+| `correlation_maxmind_geo_db/` | Maxmind GeoIP database (auto-updated) for GeoIP ↔ ASN correlation |
+
+### CSV structure — bad_asn_static_list.csv
+
+| Column | Description |
+|---|---|
+| `as_number` | ASN in `ASXXXXX` or numeric format |
+| `metadata_comment` | Hosting provider name or abuse context |
+
+### CSV structure — asn_metadata_infos.csv
+
+| Column | Description |
+|---|---|
+| `as_number` | ASN identifier |
+| `as_name` | Operator name |
+| `severity` | Risk level: `info`, `low`, `medium`, `high` |
+| `confidence` | Detection confidence |
+| `false_positive_rate` | Expected false positive rate |
+| `tags` | Labels such as `vpn (ISP)`, `bulletproof`, `spam` |
+
+## Further reading
+
+<Card title="Threat Hunting Suspicious TLDs — mthcht on Medium" icon="book-open" href="https://mthcht.medium.com/threat-hunting-suspicious-tlds-a742c2adbf58">
+  Full walkthrough of TLD-based threat hunting methodology and Splunk detection queries
+</Card>

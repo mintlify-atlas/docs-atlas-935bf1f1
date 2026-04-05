@@ -1,0 +1,81 @@
+---
+title: "Suspicious Windows Tasks"
+description: "Scheduled task names associated with malware persistence mechanisms"
+---
+
+Scheduled tasks are one of the most common persistence techniques used by malware and threat actors. After gaining initial access, attackers register scheduled tasks to survive reboots, re-execute payloads, or maintain beaconing to a C2 server. Because many tools use hardcoded task names, matching newly created tasks against a known-bad list is a high-fidelity detection method with low false-positive rates.
+
+<Warning>
+  Scheduled task creation does not require administrator privileges in all configurations. User-writable task paths (e.g. `%APPDATA%`) are frequently abused by commodity malware and ransomware.
+</Warning>
+
+## Why attackers use scheduled tasks
+
+<Steps>
+  <Step title="Persistence after reboot">
+    A scheduled task set to run at logon or system startup ensures the implant restarts without user interaction.
+  </Step>
+  <Step title="Periodic beaconing">
+    Tasks configured with a repeat interval (e.g. every 5 minutes) keep a RAT or loader executing continuously without relying on a persistent service.
+  </Step>
+  <Step title="Living off the land">
+    `schtasks.exe` and `at.exe` are signed Microsoft binaries, so task creation blends into normal administrative activity when not correlated with other signals.
+  </Step>
+  <Step title="Lateral movement">
+    Remote task creation via RPC (`ATSVC`/`ITaskSchedulerV2`) lets attackers schedule execution on remote hosts without dropping additional binaries.
+  </Step>
+</Steps>
+
+## CSV structure
+
+Download: [`suspicious_windows_tasks_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_tasks_list.csv)
+
+| Column | Description |
+|---|---|
+| `TaskName` | Full task path as registered in Task Scheduler (e.g. `\Microsoft_Auto_Scheduler`) |
+| `TaskCommand` | Binary or script invoked by the task (wildcards supported) |
+| `TaskArguments` | Arguments passed to the task command |
+| `metadata_tool` | Name of the tool, malware family, or threat actor campaign |
+| `metadata_tool_category` | Category: `Malware`, `Ransomware`, `Data Exfiltration`, etc. |
+| `metadata_tool_type` | Classification: `offensive_tool`, `greyware_tool` |
+| `metadata_link` | Reference link for the tool or campaign |
+| `metadata_severity` | Severity rating: `low`, `medium`, `high`, `critical` |
+| `metadata_comment` | Context describing why this task name is suspicious |
+| `metadata_reference` | Supporting source URL(s) |
+
+## Detection approach
+
+**Windows Event ID 4698** (`Security` log) is generated whenever a scheduled task is created. Audit policy for `Other Object Access Events` must be enabled to capture this event.
+
+### Splunk — detect suspicious task creation (Event 4698)
+
+```text
+index=wineventlog source="WinEventLog:Security" EventCode=4698
+| spath input=TaskContent output=task_name path=Task.RegistrationInfo.URI
+| lookup suspicious_windows_tasks_list.csv TaskName AS task_name
+    OUTPUT metadata_tool, metadata_severity, metadata_comment
+| where isnotnull(metadata_tool)
+| table _time, host, user, task_name, metadata_tool, metadata_severity, metadata_comment
+| sort -metadata_severity, _time
+```
+
+### Splunk — detect task creation via schtasks.exe command line
+
+```text
+index=wineventlog source="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+    Image="*\\schtasks.exe" CommandLine="*/create*"
+| rex field=CommandLine "/tn\s+(?<task_name>[^\s/]+)"
+| lookup suspicious_windows_tasks_list.csv TaskName AS task_name
+    OUTPUT metadata_tool, metadata_severity, metadata_comment
+| where isnotnull(metadata_tool)
+| table _time, host, user, CommandLine, metadata_tool, metadata_severity, metadata_comment
+```
+
+<Note>
+  Event 4698 requires the `Audit Other Object Access Events` subcategory to be enabled via Group Policy or `auditpol /set /subcategory:"Other Object Access Events" /success:enable`.
+</Note>
+
+## Related lists
+
+- [`windows_asr_rules.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/windows_asr_rules.csv) — Windows ASR rules that can block scheduled task abuse by Office macros and script interpreters
+- [`suspicious_windows_services_names_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_services_names_list.csv) — Companion list for service-based persistence

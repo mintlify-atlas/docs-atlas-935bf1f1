@@ -1,0 +1,89 @@
+---
+title: "Suspicious MAC Addresses"
+description: "MAC addresses associated with known attack tools, virtual machines, and rogue devices"
+---
+
+A MAC (Media Access Control) address is a 48-bit hardware identifier assigned to a network interface. The first 24 bits form the Organizationally Unique Identifier (OUI), which identifies the manufacturer. Because attack hardware, single-board computers (e.g. Raspberry Pi), and virtual machine platforms all have well-known OUI ranges, MAC-based detection can surface rogue devices on your network before host-based controls trigger.
+
+## List: suspicious\_mac\_address\_list.csv
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_mac_address_list.csv`
+
+**Raw CSV:**
+`https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_mac_address_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `src_mac` | MAC address or OUI prefix pattern (wildcards and multiple formats supported, e.g. `B827EB*`, `B8:27:EB*`, `B8-27-EB*`) |
+| `metadata_comment` | Organization or device type associated with the MAC range |
+
+The list uses wildcard patterns to cover all three common MAC notation formats (no delimiter, colon-separated, hyphen-separated) for each OUI prefix.
+
+### Example Entries
+
+| Pattern | Organization |
+|---------|-------------|
+| `B827EB*` / `B8:27:EB*` / `B8-27-EB*` | Raspberry Pi Foundation |
+| `E45F01*` / `E4:5F:01*` | Raspberry Pi Foundation (alternate OUI) |
+| `DC:A6:32*` | Raspberry Pi Foundation (Pi 4 and later) |
+| `00:0C:29*` | VMware virtual machines |
+| `08:00:27*` | Oracle VirtualBox virtual machines |
+
+## Why MAC Addresses Matter
+
+<CardGroup cols={2}>
+  <Card title="Rogue Device Detection" icon="network-wired">
+    Single-board computers (Raspberry Pi, Beaglebone) and hardware implants connected to internal switch ports are identifiable before any host-based agent is installed.
+  </Card>
+  <Card title="VM-Based Attack Detection" icon="server">
+    Attackers running Kali Linux or other offensive distributions inside a VM expose the hypervisor's OUI (VMware, VirtualBox, QEMU/KVM) in DHCP logs.
+  </Card>
+  <Card title="NAC Enforcement" icon="shield">
+    Network Access Control (NAC) solutions can be configured to quarantine or block ports where a flagged OUI is detected before the device communicates further.
+  </Card>
+  <Card title="DHCP Correlation" icon="database">
+    DHCP servers log client MAC addresses at lease request time, providing a network-layer record independent of the operating system installed on the device.
+  </Card>
+</CardGroup>
+
+## Detection
+
+### Data Sources
+
+- **DHCP server logs** — logged at lease request/renewal; typically the most complete MAC address record on flat networks
+- **Network Access Control (NAC) telemetry** — 802.1X authentication events include the client MAC
+- **Switch port security logs** — some managed switches log MAC addresses seen on each port
+- **ARP tables / network flow records** — short-lived but useful for retrospective analysis
+
+### Splunk — DHCP Lookup
+
+```spl
+index=dhcp
+| eval mac_normalized=upper(replace(src_mac, "[-:]", ""))
+| lookup suspicious_mac_address_list src_mac AS mac_normalized OUTPUT metadata_comment
+| where isnotnull(metadata_comment)
+| table _time, src_ip, src_mac, metadata_comment
+```
+
+<Note>
+  Because the list stores multiple notation formats (no delimiter, colon, hyphen), normalize your MAC field before lookup. The example above strips delimiters for a cleaner match. Alternatively, load all three notation variants and use a wildcard lookup.
+</Note>
+
+## MAC Spoofing Limitations
+
+MAC addresses can be trivially spoofed at the software level on any operating system. A sophisticated attacker who knows your OUI allowlist can impersonate a legitimate device. MAC-based detection should therefore be treated as a **low-friction first layer**, not a definitive control.
+
+Combine MAC monitoring with:
+
+- **802.1X certificate-based authentication** — requires a valid client certificate, not just a MAC
+- **DHCP fingerprinting** — the DHCP options a client requests reveal the OS independent of MAC
+- **NetFlow / behavioral baselines** — unusual traffic volume or destination patterns from a "known" MAC
+
+### OUI Lookup Resources
+
+- [IEEE OUI Registry (MA-L)](https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries) — authoritative OUI assignments
+- [Wireshark OUI database](https://www.wireshark.org/tools/oui-lookup.html) — fast lookup by MAC prefix
+- [MacLookup.app](https://maclookup.app) — API-accessible OUI lookup

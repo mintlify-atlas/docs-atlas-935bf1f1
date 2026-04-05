@@ -1,0 +1,224 @@
+---
+title: "Investigation Tools"
+description: "Platforms and tools for investigating IPs, domains, URLs, files, and email headers"
+---
+
+Enrichment and investigation platforms organized by observable type. Use these tools to pivot from raw indicators to contextual threat intelligence during triage, incident response, or proactive hunting.
+
+<Tabs>
+  <Tab title="IP / Domain">
+    ## IP reputation
+
+    | Tool | Description |
+    |------|-------------|
+    | [VirusTotal](https://www.virustotal.com/#/home/search) | Multi-engine scan and reputation check for IPs, domains, URLs, and files |
+    | [AbuseIPDB](https://www.abuseipdb.com/) | Community-reported IP abuse database with confidence scoring |
+    | [GreyNoise](https://viz.greynoise.io/) | Classifies IPs as internet background noise vs. targeted activity |
+    | [Shodan](https://www.shodan.io/) | Search engine for internet-connected devices; reveals open ports, banners, and services |
+    | [Censys](https://search.censys.io/) | Internet-wide scan data for hosts and certificates |
+    | [Onyphe](https://www.onyphe.io/) | Cyber defense search engine with passive DNS, threat intel, and scan data |
+    | [Criminal IP](https://www.criminalip.io/en) | IP reputation and threat intelligence with attack surface context |
+    | [proxycheck.io](https://proxycheck.io/web/) | Detects proxy, VPN, and Tor exit node IPs |
+    | [IPHub](https://iphub.info/) | Proxy and hosting detection for IP addresses |
+    | [Spur](https://app.spur.us/) | Residential proxy and VPN attribution intelligence |
+    | [ipinfo.io](https://ipinfo.io) | IP geolocation, ASN, and hosting provider lookup |
+    | [IPVoid](https://www.ipvoid.com/) | Aggregated IP reputation check across multiple blacklist sources |
+    | [Pulsedive](https://pulsedive.com/) | Threat intelligence platform with indicator enrichment and risk scoring |
+    | [ThreatMiner](https://www.threatminer.org/) | Open-source threat intelligence with passive DNS, WHOIS, and malware associations |
+    | [ASN lookup (asnlookup.com)](https://asnlookup.com/) | ASN information and IP range lookup |
+    | [BGP.he.net ASN check](https://bgp.he.net/) | ASN, prefix, and routing information |
+
+    ## Domain and URL analysis
+
+    | Tool | Description |
+    |------|-------------|
+    | [URLScan](https://urlscan.io/) | Scans and screenshots URLs, capturing DOM, redirects, and resource requests |
+    | [URLVoid](https://www.urlvoid.com) | Aggregated domain reputation across multiple engines |
+    | [CheckPhish](https://checkphish.bolster.ai/) | Phishing and fraud detection for URLs |
+    | [urlquery](http://urlquery.net/) | URL scanner with JavaScript analysis and network traffic inspection |
+    | [urldna.io](https://urldna.io/) | Domain DNA analysis and threat scoring |
+    | [URLHaus](https://urlhaus.abuse.ch/api/#csv) | Malware distribution URL database from abuse.ch |
+    | [web-check](https://web-check.as93.net/) | Comprehensive website reconnaissance: headers, DNS, SSL, redirects |
+    | [SecurityTrails](https://securitytrails.com/) | Historical DNS, WHOIS, and subdomain enumeration |
+    | [FOFA](https://fofa.info/) | Cyberspace search engine for internet asset discovery |
+    | [ZoomEye](https://www.zoomeye.ai/) | Chinese cyberspace search engine covering IPs, devices, and services |
+    | [Cloudflare Radar URL scan](https://radar.cloudflare.com/scan) | URL analysis using Cloudflare's global network perspective |
+    | [Cloudflare Radar](https://radar.cloudflare.com/) | Internet traffic trends, outages, and routing intelligence |
+    | [tiny-scan](https://www.tiny-scan.com/) | URL scanner with screenshot and redirect chain analysis |
+    | [CyberGordon](https://cybergordon.com/) | Aggregated URL reputation check |
+    | [scamsearch.io](https://scamsearch.io/#anchorCeckNow) | Scam and fraud indicator search |
+    | [scamdb.net](https://www.scamdb.net/) | Community-maintained scam domain database |
+    | [URL Redirect Checker](https://redirect-checker.net/) | Traces the full redirect chain of a URL |
+
+    ## WHOIS and DNS
+
+    | Tool | Description |
+    |------|-------------|
+    | [DNSDumpster](https://dnsdumpster.com/) | DNS reconnaissance and host discovery for a domain |
+    | [nslookup.io](https://www.nslookup.io/) | DNS record lookup across multiple resolvers |
+    | [ViewDNS](http://viewdns.info/) | DNS lookup, reverse IP, WHOIS, and geolocation tools |
+    | [WHOIS DomainTools](https://whois.domaintools.com/) | Comprehensive WHOIS lookup with historical data |
+    | [Whoxy](https://www.whoxy.com/reverse-whois/) | Reverse WHOIS search to find domains registered by the same registrant |
+    | [dnshistory.org](https://dnshistory.org/) | Historical DNS records for a domain |
+    | [validin.com](https://app.validin.com/) | DNS and passive DNS investigation platform |
+    | [Web Archive](https://web.archive.org/) | Wayback Machine for historical snapshots of web content |
+
+    ## Certificate transparency
+
+    | Tool | Description |
+    |------|-------------|
+    | [crt.sh](https://crt.sh/) | Search certificate transparency logs for SSL/TLS certificates issued for a domain; useful for subdomain discovery and pivot on infrastructure |
+
+    ## Vendor URL categorization lookups
+
+    <AccordionGroup>
+      <Accordion title="Vendor web filter lookups">
+        Use these to check how commercial web filtering products categorize a URL or domain:
+
+        - [Talos Intelligence (Cisco)](https://www.talosintelligence.com/reputation_center)
+        - [BlueCoat](https://sitereview.bluecoat.com/)
+        - [Norton SafeWeb](https://safeweb.norton.com/)
+        - [Fortinet FortiGuard](https://www.fortiguard.com/webfilter)
+        - [McAfee SiteLookup](https://sitelookup.mcafee.com/)
+        - [Trellix TrustedSource](https://trustedsource.org/)
+        - [Palo Alto URL Filtering](https://urlfiltering.paloaltonetworks.com/query/)
+        - [Checkpoint URLcat](https://urlcat.checkpoint.com/urlcat/main.htm)
+        - [Cyren](https://www.cyren.com/security-center/url-category-check-gate)
+        - [Forcepoint](https://support.forcepoint.com/s/site-lookup)
+        - [TrendMicro](https://global.sitesafety.trendmicro.com/)
+      </Accordion>
+    </AccordionGroup>
+  </Tab>
+
+  <Tab title="File Analysis">
+    ## File hash and malware lookups
+
+    | Tool | Description |
+    |------|-------------|
+    | [VirusTotal](https://www.virustotal.com/#/home/search) | Multi-engine AV scan and behavioral analysis for files and hashes |
+    | [MalwareBazaar](https://bazaar.abuse.ch/) | abuse.ch malware sample database; lookup by hash or upload samples |
+    | [vx-underground](https://vx-underground.org/Samples) | Large public archive of malware samples and threat intelligence reports |
+    | [Malware Traffic Analysis (PCAPs)](https://malware-traffic-analysis.net/) | Blog with PCAP files and malware samples from infection traffic captures |
+    | [malware-traffic-analysis.net](https://www.malware-traffic-analysis.net/index.html) | Full index of PCAP-based malware infection analyses |
+    | [EchoTrail](https://www.echotrail.io/) | Windows executable lookup: prevalence, parent processes, and behavioral baselines |
+    | [xcyclopedia](https://strontic.github.io/xcyclopedia/) | Encyclopedia of Windows executables with metadata, hashes, and behavioral data |
+    | [abuse.ch platforms](https://abuse.ch/#platforms) | Portal to all abuse.ch threat intelligence platforms |
+
+    ## Windows executable context
+
+    <Note>
+      [EchoTrail](https://www.echotrail.io/) and [xcyclopedia](https://strontic.github.io/xcyclopedia/) are particularly useful for determining whether a suspicious executable name or hash is a known system binary, a renamed tool, or genuinely novel. Use them alongside VirusTotal for context on low-detection-rate files.
+    </Note>
+
+    ## Browser extension analysis
+
+    | Tool | Description |
+    |------|-------------|
+    | [CRXaminer](https://crxaminer.tech/) | Static analysis of Chrome extension CRX files; extracts permissions, scripts, and metadata |
+    | [AppTotal](https://apptotal.io/) | App and browser extension behavioral analysis platform |
+    | [ExtensionHound](https://github.com/arsolutioner/ExtensionHound) | DNS forensic tool for Chrome extensions |
+
+    ## Online paste and code lookup
+
+    | Tool | Description |
+    |------|-------------|
+    | [Online IDE / Paste Search (RedHunt Labs)](https://redhuntlabs.com/online-ide-search/) | Search across paste sites and online code repositories for leaked credentials, code, or indicators |
+
+    ## Hardware lookups
+
+    | Tool | Description |
+    |------|-------------|
+    | [OUI MAC Address Lookup (Wireshark)](https://www.wireshark.org/tools/oui-lookup.html) | Resolve a MAC address OUI prefix to the manufacturer |
+    | [macvendorlookup.com](https://www.macvendorlookup.com/) | MAC address vendor identification |
+    | [DeviceHunt](https://devicehunt.com/) | USB and PCI device database for hardware identification |
+  </Tab>
+
+  <Tab title="Email">
+    ## Email header analysis
+
+    | Tool | Description |
+    |------|-------------|
+    | [MXToolbox Network Tools](https://mxtoolbox.com/NetworkTools.aspx) | Suite of email and DNS diagnostic tools |
+    | [MXToolbox Email Headers](https://mxtoolbox.com/EmailHeaders.aspx) | Parse and visualize email headers to trace message routing |
+    | [Message Header Analyzer (Microsoft)](https://mha.azurewebsites.net/pages/mha.html) | Microsoft's email header analyzer, useful for Office 365 headers |
+    | [Email Header Analyzer](https://emailheaders.verification-check.com/) | Header parsing with spam scoring and routing visualization |
+    | [Email Header Analysis](https://www.email-format.com/header-analysis/) | Parse raw email headers to identify relay hops and authentication results |
+
+    ## Email reputation
+
+    | Tool | Description |
+    |------|-------------|
+    | [emailrep.io](https://emailrep.io/) | Email address reputation scoring based on breach data, social presence, and deliverability signals |
+    | [HaveIBeenPwned](https://haveibeenpwned.com/) | Check if an email address has appeared in known data breaches |
+    | [leakcheck.io](https://leakcheck.io) | Check email addresses and credentials against breach databases |
+
+    ## Spam and phishing checks
+
+    | Tool | Description |
+    |------|-------------|
+    | [SpamHaus check](https://check.spamhaus.org/) | Look up IPs, domains, and email addresses against SpamHaus blocklists |
+
+    ## Telegram investigation
+
+    | Tool | Description |
+    |------|-------------|
+    | [Matkap CTI](https://matkap.cti.monster/) | Telegram bot hunting and channel investigation tool |
+  </Tab>
+
+  <Tab title="Sandboxes">
+    ## Dynamic analysis sandboxes
+
+    <CardGroup cols={2}>
+      <Card title="ANY.RUN" icon="play" href="https://any.run/">
+        Interactive malware sandbox with real-time process tree, network traffic, and behavioral indicators. Supports Windows and Linux environments.
+      </Card>
+      <Card title="Triage" icon="vials" href="https://tria.ge/s">
+        High-throughput malware analysis sandbox by Hatching, with YARA, Suricata, and behavioral signatures.
+      </Card>
+      <Card title="CapeSandbox" icon="crow" href="https://www.capesandbox.com/">
+        Open-source sandbox derived from Cuckoo, with enhanced malware unpacking and configuration extraction capabilities.
+      </Card>
+      <Card title="JoeSandbox" icon="flask" href="https://www.joesandbox.com/analysispaged/0">
+        Deep behavioral analysis with multi-OS support, document analysis, and extensive reporting.
+      </Card>
+      <Card title="Hybrid Analysis" icon="microscope" href="https://www.hybrid-analysis.com/">
+        Free sandbox service from CrowdStrike Falcon with static and dynamic analysis.
+      </Card>
+      <Card title="FileScan.io" icon="file-magnifying-glass" href="https://www.filescan.io/">
+        Malware analysis with MITRE ATT&CK mapping and IoC extraction focused on file-based threats.
+      </Card>
+      <Card title="VMRay" icon="server" href="https://www.vmray.com/">
+        Agentless hypervisor-based sandbox with high evasion resistance and detailed behavioral reports.
+      </Card>
+      <Card title="Kaspersky OpenTIP" icon="shield-check" href="https://opentip.kaspersky.com/requests">
+        Kaspersky Threat Intelligence Portal for file, hash, URL, and IP lookups with Kaspersky's threat database.
+      </Card>
+      <Card title="Threat Zone" icon="radar" href="https://app.threat.zone/scan">
+        Online malware analysis platform with behavioral analysis and IOC extraction.
+      </Card>
+      <Card title="DocGuard" icon="file-shield" href="https://app.docguard.io/">
+        Document-focused analysis for Office files and PDFs, identifying macros, exploits, and suspicious objects.
+      </Card>
+    </CardGroup>
+
+    ## Emulation
+
+    - [Speakeasy](https://github.com/mandiant/speakeasy) — Mandiant's kernel and user-mode Windows emulator for shellcode and driver analysis without executing on bare metal
+
+    ## Threat intelligence lookups
+
+    | Tool | Description |
+    |------|-------------|
+    | [VirusTotal](https://www.virustotal.com) | Multi-engine scanning with community comments, behavior reports, and MITRE ATT&CK mapping |
+    | [AlienVault OTX](https://otx.alienvault.com/) | Open Threat Exchange: community-contributed pulses with IOCs, YARA rules, and ATT&CK mapping |
+    | [Microsoft TI (Defender)](https://ti.defender.microsoft.com/) | Microsoft's threat intelligence portal integrated with Defender |
+    | [IBM X-Force Exchange](https://exchange.xforce.ibmcloud.com/) | IBM's threat intelligence sharing platform with IP, URL, and malware reports |
+    | [Kaspersky Security Network](https://www.kaspersky.com/security-network) | Kaspersky's global threat intelligence network |
+    | [ThreatBook](https://threatbook.io/) | Threat intelligence platform with APT group tracking and IOC enrichment |
+    | [Pulsedive](https://pulsedive.com/) | Community threat intelligence with automated enrichment and risk scoring |
+
+    <Warning>
+      Submitting files to public sandboxes makes them visible to other users and may expose sensitive data. For confidential incident response samples, use private analysis options or air-gapped environments. Check each platform's data handling and retention policies before submitting.
+    </Warning>
+  </Tab>
+</Tabs>

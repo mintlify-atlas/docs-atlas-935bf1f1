@@ -1,0 +1,155 @@
+---
+title: "IOC Feeds & Blacklists"
+description: "Curated sources of indicators of compromise, blacklists, and threat intelligence feeds"
+---
+
+A curated set of external IOC feeds organized by source type. Many of these feeds publish indicators in machine-readable formats (CSV, JSON, MISP) suitable for direct SIEM ingestion or automated enrichment pipelines.
+
+<Info>
+  These are external feeds maintained by their respective vendors and researchers. Review each feed's license and terms before integrating into production systems. Many feeds can be consumed as SIEM lookup sources for real-time indicator matching.
+</Info>
+
+## Multi-vendor threat intel feeds
+
+<AccordionGroup>
+  <Accordion title="abuse.ch platforms">
+    abuse.ch operates several focused threat intelligence platforms:
+
+    - [SSLBL (SSL Blacklist)](https://sslbl.abuse.ch/blacklist/) — Blacklist of malicious SSL certificates and JA3 fingerprints
+    - [URLHaus](https://urlhaus.abuse.ch/api/#csv) — Malware distribution URLs in CSV format; [MISP feed](https://urlhaus.abuse.ch/downloads/misp/) also available
+    - [URLHaus feeds](https://urlhaus.abuse.ch/feeds/) — Additional URLHaus feed endpoints including ASN-based feeds
+    - [ThreatFOX IOC](https://threatfox.abuse.ch/export/) — IOCs associated with malware families, exportable in multiple formats
+    - [MalwareBazaar](https://bazaar.abuse.ch/) — Malware sample repository with hash-based lookups
+  </Accordion>
+
+  <Accordion title="C2IntelFeeds and C2 Tracker">
+    - [C2IntelFeeds](https://github.com/drb-ra/C2IntelFeeds) — Community-maintained list of active C2 infrastructure
+    - [C2 Tracker](https://github.com/montysecurity/C2-Tracker) — Tracks active C2 servers across multiple malware families
+  </Accordion>
+
+  <Accordion title="Volexity and open-source aggregators">
+    - [Volexity Threat Intel](https://github.com/volexity/threat-intel) — IOCs from Volexity incident response and research
+    - [Open Source TI Feeds](https://github.com/Bert-JanP/Open-Source-Threat-Intel-Feeds) — Aggregated list of open-source threat intelligence feeds
+    - [Cloud Intel IOC](https://github.com/unknownhad/CloudIntel) — IOCs focused on cloud infrastructure threats
+  </Accordion>
+</AccordionGroup>
+
+## Vendor security research
+
+<AccordionGroup>
+  <Accordion title="Unit42 (Palo Alto Networks)">
+    - [Unit42 IOC](https://github.com/mthcht/iocs) — Curated mirror of Unit42 indicators
+    - [Unit42 Timely Threat Intel](https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel) — Time-sensitive indicators published alongside Unit42 threat briefs
+    - [Unit42 Threat Intelligence Article IOCs](https://github.com/PaloAltoNetworks/Unit42-Threat-Intelligence-Article-Information) — IOCs extracted from Unit42 research articles
+  </Accordion>
+
+  <Accordion title="Cisco Talos">
+    - [Cisco Talos IOC](https://github.com/Cisco-Talos/IOCs) — Indicators published alongside Talos research blog posts
+  </Accordion>
+
+  <Accordion title="Sophos Labs">
+    - [Sophos Labs IOC](https://github.com/sophoslabs/IoCs) — IOCs from Sophos threat research and incident response
+  </Accordion>
+
+  <Accordion title="ESET Research">
+    - [ESET Research IOC](https://github.com/eset/malware-ioc) — Indicators from ESET's malware research publications
+  </Accordion>
+
+  <Accordion title="Elastic Labs">
+    - [Elastic Labs IOC](https://github.com/elastic/labs-releases/tree/main/indicators) — Threat indicators from Elastic Security Labs research
+  </Accordion>
+
+  <Accordion title="Sekoia">
+    - [Sekoia IOC](https://github.com/SEKOIA-IO/Community/tree/main/IOCs) — Community IOCs from Sekoia's threat intelligence team
+  </Accordion>
+
+  <Accordion title="Zscaler ThreatLabz">
+    - [ThreatLabz IOC](https://github.com/threatlabz/iocs) — Indicators from Zscaler ThreatLabz research
+  </Accordion>
+
+  <Accordion title="Other vendors">
+    - [Avast IOC](https://github.com/avast/ioc) — IOCs from Avast threat research
+    - [Zimperium IOC](https://github.com/Zimperium/IOC) — Mobile-focused threat indicators from Zimperium
+    - [HarfangLab IOC](https://github.com/HarfangLab/iocs) — Indicators from HarfangLab threat research
+    - [BlackLotus Labs IOC](https://github.com/blacklotuslabs/IOCs) — IOCs from Black Lotus Labs (Lumen Technologies)
+    - [Prodaft IOC](https://github.com/prodaft/malware-ioc) — Malware indicators from Prodaft threat intelligence
+    - [DoctorWeb IOC](https://github.com/DoctorWebLtd/malware-iocs) — Indicators from Dr.Web malware research
+    - [ExecuteMalware IOC](https://github.com/executemalware/Malware-IOCs) — Community-contributed malware IOCs
+    - [Blackorbird APT Report IOC](https://github.com/blackorbird/APT_REPORT) — IOCs extracted from APT research reports
+  </Accordion>
+</AccordionGroup>
+
+## Malware-specific feeds (Pr0xylife)
+
+Pr0xylife maintains dedicated per-family IOC repositories, updated regularly with fresh campaign indicators.
+
+<AccordionGroup>
+  <Accordion title="Loaders and droppers">
+    - [DarkGate IOC](https://github.com/pr0xylife/DarkGate)
+    - [Latrodectus IOC](https://github.com/pr0xylife/Latrodectus)
+    - [Pikabot IOC](https://github.com/pr0xylife/Pikabot)
+    - [BumbleBee IOC](https://github.com/pr0xylife/Bumblebee)
+    - [BazarLoader IOC](https://github.com/pr0xylife/BazarLoader)
+    - [WikiLoader IOC](https://github.com/pr0xylife/WikiLoader)
+    - [SSLoad IOC](https://github.com/pr0xylife/SSLoad)
+    - [Matanbuchus IOC](https://github.com/pr0xylife/Matanbuchus)
+    - [IcedID IOC](https://github.com/pr0xylife/IcedID)
+    - [Warmcookie / Badspace IOC](https://github.com/pr0xylife/Warmcookie-Badspace)
+  </Accordion>
+
+  <Accordion title="Banking trojans and botnets">
+    - [QakBot IOC](https://github.com/pr0xylife/Qakbot)
+    - [Emotet IOC](https://github.com/pr0xylife/Emotet)
+    - [Gozi IOC](https://github.com/pr0xylife/Gozi)
+    - [nworm IOC](https://github.com/pr0xylife/nworm)
+  </Accordion>
+
+  <Accordion title="RATs and stealers">
+    - [AsyncRAT IOC](https://github.com/pr0xylife/AsyncRAT)
+    - [NanoCore IOC](https://github.com/pr0xylife/Nanocore)
+    - [NetWire IOC](https://github.com/pr0xylife/Netwire)
+    - [RemcosRAT IOC](https://github.com/pr0xylife/RemcosRAT)
+    - [BitRAT IOC](https://github.com/pr0xylife/BitRAT)
+    - [NetSupportRAT IOC](https://github.com/pr0xylife/NetSupportRAT)
+    - [njRat IOC](https://github.com/pr0xylife/njRat)
+    - [Lokibot IOC](https://github.com/pr0xylife/Lokibot)
+    - [AZORult IOC](https://github.com/pr0xylife/AZORult)
+    - [SnakeKeylogger IOC](https://github.com/pr0xylife/SnakeKeylogger)
+    - [Vidar IOC](https://github.com/pr0xylife/Vidar)
+  </Accordion>
+</AccordionGroup>
+
+## Blocklists
+
+<AccordionGroup>
+  <Accordion title="IP and network blocklists">
+    - [Binary Defense IP Banlist](https://www.binarydefense.com/banlist.txt) — Actively malicious IPs maintained by Binary Defense
+    - [SpamHaus DROP](https://www.spamhaus.org/drop/drop.txt) — Don't Route Or Peer list of hijacked IP blocks
+    - [SpamHaus DROP + ASN](https://www.spamhaus.org/blocklists/do-not-route-or-peer/) — Extended DROP list including ASN-level entries
+  </Accordion>
+
+  <Accordion title="DNS and domain blocklists">
+    - [BlocklistProject](https://github.com/blocklistproject/Lists) — Categorized domain blocklists (ads, malware, phishing, etc.)
+    - [DNS Blocklists (hagezi)](https://github.com/hagezi/dns-blocklists) — High-quality DNS blocklists maintained by hagezi
+  </Accordion>
+
+  <Accordion title="Phishing blocklists">
+    - [Scam Blocklist (jarelllama)](https://github.com/jarelllama/Scam-Blocklist) — Actively maintained phishing and scam domain blocklist
+    - [Phishing URLs last week feed](https://file.jeroengui.be/phishing/last_week.txt) — Rolling feed of phishing URLs from the past week
+  </Accordion>
+</AccordionGroup>
+
+## Ransomware feeds
+
+<AccordionGroup>
+  <Accordion title="Ransomware activity tracking">
+    - [Ransomware.live](https://ransomware.live) — Real-time tracking of ransomware group activity and victim posts
+    - [Zscaler ThreatLabz Ransomware Notes](https://github.com/ThreatLabz/ransomware_notes) — Collection of ransom notes by family for identification
+    - [experiant.ca](https://fsrm.experiant.ca/api/v1/get) — File Server Resource Manager blocklist for ransomware file extensions
+  </Accordion>
+</AccordionGroup>
+
+## Additional resources
+
+- [rosti.bin public reports feed](https://rosti.bin.re/feeds) — Public threat intelligence report feed
+- [vx-underground](https://vx-underground.org/Samples) — Malware sample archive and intelligence reports

@@ -1,0 +1,252 @@
+---
+title: "DFIR Tools"
+description: "Curated list of digital forensics and incident response tools"
+---
+
+A categorized reference of DFIR tools sourced from the [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists) collection. Each entry links to the upstream project and notes platform support.
+
+<Tabs>
+  <Tab title="Artifact collection">
+    Tools for acquiring artifacts from live endpoints and disk images.
+
+    <CardGroup cols={2}>
+      <Card title="KAPE" icon="box-archive" href="https://www.kroll.com/en/insights/publications/cyber/kroll-artifact-parser-extractor-kape">
+        Kroll Artifact Parser and Extractor. Collects and processes forensic artifacts from Windows systems using configurable targets and modules. **Platform:** Windows
+      </Card>
+      <Card title="KapeFiles" icon="folder-open" href="https://github.com/EricZimmerman/KapeFiles">
+        Community-maintained target and module definitions for KAPE. Defines what artifacts to collect and how to process them. **Platform:** Windows
+      </Card>
+      <Card title="Velociraptor" icon="bolt" href="https://github.com/Velocidex/velociraptor">
+        Open-source DFIR platform for endpoint visibility, live forensics, and hunt operations at scale using VQL queries. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="VolatileDataCollector" icon="database" href="https://github.com/gtworek/VolatileDataCollector">
+        Lightweight Windows tool for collecting volatile data from live systems: running processes, network connections, loaded modules. **Platform:** Windows
+      </Card>
+      <Card title="UAC" icon="terminal" href="https://github.com/tclahr/uac">
+        Unix-like Artifacts Collector. Collects forensic artifacts from Linux, macOS, and other Unix-like systems without requiring installation. **Platform:** Linux, macOS, Unix
+      </Card>
+      <Card title="Eric Zimmerman Tools" icon="toolbox" href="https://ericzimmerman.github.io/#!index.md">
+        Suite of Windows forensic parsers: MFTECmd, PECmd, JLECmd, LECmd, AppCompatCacheParser, AmcacheParser, and more. **Platform:** Windows
+      </Card>
+      <Card title="dfir-orc" icon="gear" href="https://github.com/dfir-orc">
+        Modular artifact collection framework from ANSSI-FR. Supports remote and local collection with signed binaries. **Platform:** Windows
+      </Card>
+      <Card title="dfir-orc-config" icon="sliders" href="https://github.com/DFIR-ORC/dfir-orc-config">
+        Default configuration files for dfir-orc, defining collection targets and processing steps. **Platform:** Windows
+      </Card>
+      <Card title="Awesome KAPE" icon="list" href="https://github.com/AndrewRathbun/Awesome-KAPE">
+        Curated list of KAPE resources, targets, modules, and community content. **Platform:** Windows
+      </Card>
+      <Card title="PSBits DFIR" icon="code" href="https://github.com/gtworek/PSBits/tree/master/DFIR">
+        PowerShell utilities for Windows forensics and live response tasks. **Platform:** Windows
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Event log analysis">
+    Tools for parsing, searching, and hunting through Windows Event Logs and audit logs.
+
+    <CardGroup cols={2}>
+      <Card title="Hayabusa" icon="magnifying-glass" href="https://github.com/Yamato-Security/hayabusa">
+        Fast Windows Event Log threat hunting and forensics tool from Yamato Security. Applies Sigma rules against EVTX files and produces timeline output. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="WELA" icon="table" href="https://github.com/Yamato-Security/WELA">
+        Windows Event Log Analyzer. Provides human-readable timeline views of Windows security, system, and application logs. **Platform:** Windows
+      </Card>
+      <Card title="chainsaw" icon="link" href="https://github.com/WithSecureLabs/chainsaw">
+        Rapid search and hunt through Windows event logs using Sigma rules and built-in detection logic. From WithSecure Labs. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="APT-Hunter" icon="crosshairs" href="https://github.com/ahmedkhlief/APT-Hunter/">
+        Threat hunting tool for Windows event logs designed to detect APT activity using pre-built detection rules. **Platform:** Windows
+      </Card>
+      <Card title="Zircolite" icon="filter" href="https://github.com/wagga40/Zircolite">
+        Standalone Sigma-based detection tool for EVTX and Auditd log files. No SIEM required. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="evtx parser" icon="file-code" href="https://github.com/omerbenamram/evtx">
+        Rust-based EVTX parser with JSON and XML output. Fast, cross-platform, and suitable for scripting. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="procmon-parser" icon="list-check" href="https://github.com/eronnen/procmon-parser">
+        Python library for parsing Process Monitor (PML) log files programmatically. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="MasterParser" icon="scroll" href="https://github.com/securityjoes/MasterParser">
+        Linux log parser for DFIR investigations, supporting syslog, auth.log, and other common Linux log sources. **Platform:** Linux
+      </Card>
+      <Card title="Microsoft-Analyzer-Suite" icon="cloud" href="https://github.com/evild3ad/Microsoft-Analyzer-Suite">
+        PowerShell tools for analyzing Microsoft 365 and Azure AD audit logs for BEC and account compromise investigation. **Platform:** Windows
+      </Card>
+      <Card title="LogonTracer" icon="user-clock" href="https://github.com/JPCERTCC/LogonTracer">
+        JPCERT/CC tool for visualizing logon-related event logs to detect lateral movement and pass-the-hash attacks. **Platform:** Windows, Linux
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Timeline analysis">
+    Tools for building and navigating super-timelines from multiple artifact sources.
+
+    <CardGroup cols={2}>
+      <Card title="Plaso / log2timeline" icon="clock" href="https://github.com/log2timeline/plaso">
+        Super-timeline creation tool that extracts timestamps from hundreds of artifact types (filesystem, registry, browser history, logs) into a unified timeline. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="Timesketch" icon="chart-gantt" href="https://github.com/google/timesketch">
+        Open-source collaborative forensic timeline analysis platform from Google. Web-based interface for exploring and annotating Plaso-generated timelines. **Platform:** Linux (server)
+      </Card>
+      <Card title="ADTimeline" icon="sitemap" href="https://github.com/ANSSI-FR/ADTimeline">
+        ANSSI-FR PowerShell script for generating a timeline of Active Directory changes, useful for detecting unauthorized object modifications. **Platform:** Windows
+      </Card>
+    </CardGroup>
+
+    <Info>
+      Plaso and Timesketch are designed to work together. Run `log2timeline.py` to produce a `.plaso` file, then ingest it into Timesketch for collaborative review. See the [Memory Forensics](/dfir/memory-forensics) page for integrating memory artifacts into timeline analysis.
+    </Info>
+  </Tab>
+
+  <Tab title="Registry">
+    Tools for offline and live registry analysis.
+
+    <CardGroup cols={2}>
+      <Card title="RegRipper" icon="key" href="https://github.com/warewolf/regripper">
+        Plugin-based registry parser that extracts forensically relevant keys and values from hive files. Covers persistence, USB history, user activity, and shellbags. **Platform:** Windows, Linux
+      </Card>
+      <Card title="werejugo" icon="wifi" href="https://github.com/MarkBaggett/werejugo">
+        Identifies physical locations a laptop has been connected to by parsing wireless network history from registry and event logs. **Platform:** Windows
+      </Card>
+      <Card title="srum-dump" icon="chart-bar" href="https://github.com/MarkBaggett/srum-dump">
+        Parses the System Resource Usage Monitor (SRUM) database to extract historical application and network usage data. **Platform:** Windows
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Network forensics">
+    Tools for capturing and analyzing network traffic and artifacts.
+
+    <CardGroup cols={2}>
+      <Card title="NetworkMiner" icon="network-wired" href="https://www.netresec.com/?page=NetworkMiner">
+        Passive network forensic analysis tool. Reconstructs files, sessions, credentials, and messages from PCAP files. **Platform:** Windows, Linux
+      </Card>
+      <Card title="Wireshark" icon="eye" href="https://www.wireshark.org/">
+        Industry-standard network protocol analyzer. Deep inspection of hundreds of protocols with a rich GUI and `tshark` CLI. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="Xplico" icon="globe" href="https://www.xplico.org/">
+        Network forensics analysis tool (NFAT) that reconstructs application-layer data (HTTP, email, VoIP) from PCAP captures. **Platform:** Linux
+      </Card>
+      <Card title="Malware Traffic Analysis PCAPs" icon="file-zipper" href="https://malware-traffic-analysis.net/">
+        Public repository of PCAP files from real malware infections, useful for detection engineering and analyst training.
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Persistence & injection">
+    Tools for detecting persistence mechanisms and code injection in running systems.
+
+    <CardGroup cols={2}>
+      <Card title="PersistenceSniper" icon="shield-halved" href="https://github.com/last-byte/PersistenceSniper">
+        PowerShell module that enumerates known Windows persistence techniques (Run keys, scheduled tasks, services, WMI subscriptions, and more) on live systems. **Platform:** Windows
+      </Card>
+      <Card title="hollows_hunter" icon="ghost" href="https://github.com/hasherezade/hollows_hunter">
+        Scans all running processes to detect process hollowing, injected shellcode, and other code injection techniques. From hasherezade. **Platform:** Windows
+      </Card>
+      <Card title="PE-sieve" icon="bug" href="https://github.com/hasherezade/pe-sieve">
+        Scans a running process or memory dump for PE anomalies: replaced sections, hooks, patched IAT, and implanted shellcode. **Platform:** Windows
+      </Card>
+      <Card title="capa" icon="layers" href="https://github.com/mandiant/capa">
+        Mandiant tool that identifies capabilities in executable files using a rule-based approach. Detects persistence, injection, C2 patterns, and more. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="Malcontent" icon="search" href="https://github.com/chainguard-dev/malcontent">
+        Analyzes binaries and scripts for malicious behaviors using YARA rules. Designed for supply-chain and container image analysis. **Platform:** Linux, macOS
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="DFIR operating systems">
+    Purpose-built Linux distributions and Windows environments with pre-installed forensic tooling.
+
+    <CardGroup cols={2}>
+      <Card title="SIFT Workstation" icon="desktop" href="https://www.sans.org/tools/sift-workstation/">
+        SANS-maintained Ubuntu-based DFIR workstation. Includes Plaso, Volatility, Sleuth Kit, Autopsy, and hundreds of other tools pre-configured for investigations. **Platform:** Linux (Ubuntu)
+      </Card>
+      <Card title="Remnux" icon="microchip" href="https://remnux.org/">
+        Linux distribution from SANS for malware analysis and reverse engineering. Includes disassemblers, debuggers, deobfuscators, and network simulation tools. **Platform:** Linux (Ubuntu)
+      </Card>
+      <Card title="sof-elk" icon="database" href="https://github.com/philhagen/sof-elk">
+        Security Operations and Forensics ELK. Pre-configured Elasticsearch/Logstash/Kibana environment for ingesting and analyzing log data during investigations. **Platform:** Linux
+      </Card>
+      <Card title="tsurugi" icon="leaf" href="https://tsurugi-linux.org/">
+        Full-featured Italian-developed DFIR and OSINT Linux distribution. Includes acquisition, analysis, and reporting tools. **Platform:** Linux
+      </Card>
+      <Card title="Flare VM" icon="fire" href="https://github.com/mandiant/flare-vm">
+        Mandiant's Windows-based malware analysis environment. Installs IDA, x64dbg, Ghidra, FLOSS, and hundreds of RE/DFIR tools on Windows. **Platform:** Windows
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Disk & carving">
+    Tools for disk imaging, mounting, and file carving.
+
+    <CardGroup cols={2}>
+      <Card title="Autopsy" icon="magnifying-glass-chart" href="https://www.autopsy.com/download/">
+        Open-source digital forensics platform built on The Sleuth Kit. GUI-based case management, file system analysis, keyword search, and timeline views. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="SleuthKit" icon="hdd" href="https://github.com/sleuthkit/sleuthkit">
+        Command-line library and tools for analyzing disk images and file system metadata. Foundation of Autopsy. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="FTK Imager" icon="camera" href="https://www.exterro.com/ftk-product-downloads">
+        Disk image acquisition and preview tool from Exterro. Creates E01, AFF4, and raw forensic images. **Platform:** Windows
+      </Card>
+      <Card title="OSFMount" icon="hard-drive" href="https://www.osforensics.com/tools/mount-disk-images.html">
+        Mounts forensic disk images (E01, DD, AFF) as drive letters on Windows for read-only analysis. **Platform:** Windows
+      </Card>
+      <Card title="PhotoRec" icon="image" href="https://www.cgsecurity.org/wiki/PhotoRec">
+        File carving tool that recovers deleted files from disk images and memory dumps based on file signatures. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="Bulk Extractor" icon="boxes-stacked" href="https://github.com/simsong/bulk_extractor">
+        Extracts features (email addresses, URLs, credit card numbers, EXIF data) from disk images and memory dumps without parsing the file system. **Platform:** Windows, Linux, macOS
+      </Card>
+      <Card title="usnjrnl_rewind" icon="rotate-left" href="https://github.com/CyberCX-DFIR/usnjrnl_rewind">
+        Reconstructs UsnJrnl ($J) entries from disk images to recover file activity history even after deletion. **Platform:** Windows, Linux
+      </Card>
+      <Card title="Arsenal Recon" icon="tools" href="https://arsenalrecon.com/downloads">
+        Suite of Windows forensic tools including Arsenal Image Mounter and Registry Recon. Provides volume shadow copy access and registry reconstruction. **Platform:** Windows
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Challenges & labs">
+    Hands-on training environments and datasets for DFIR skill development.
+
+    <CardGroup cols={2}>
+      <Card title="Arsenal Recon Disk Images" icon="compact-disc" href="https://arsenalrecon-dev.s3.amazonaws.com/blog/publicly-accessible-disk-images-&-mobile-extractions-grid-for-dfir---september-24-2024-update.pdf">
+        Curated index of publicly accessible forensic disk images and mobile extractions for DFIR practice.
+      </Card>
+      <Card title="The DFIR Report Labs" icon="flask" href="https://the-dfir-report-store.myshopify.com/collections/dfir-labs">
+        Hands-on labs with real log datasets from incidents documented in DFIR Report articles.
+      </Card>
+      <Card title="ACEresponder" icon="graduation-cap" href="https://www.aceresponder.com/challenges">
+        Detailed DFIR challenges with step-by-step explanations covering endpoint forensics and log analysis.
+      </Card>
+      <Card title="Xintra / inversecos Labs" icon="vial" href="https://www.xintra.org/labs">
+        APT emulation labs from @inversecos covering cloud, endpoint, and Active Directory attack scenarios.
+      </Card>
+      <Card title="binaryz0ne Datasets" icon="folder" href="https://www.ashemery.com/dfir.html">
+        Open DFIR challenge datasets and a Linux forensics workshop from @binaryz0ne.
+      </Card>
+      <Card title="DFIR Mind Maps" icon="diagram-project" href="https://github.com/AndrewRathbun/DFIRMindMaps">
+        Visual reference maps for Windows forensic artifacts, organized by artifact type and investigation scenario.
+      </Card>
+      <Card title="DFIR Artifact Museum" icon="building-columns" href="https://github.com/AndrewRathbun/DFIRArtifactMuseum">
+        Sample artifact files (EVTX, registry hives, prefetch, LNK) for testing parsers and analysis techniques.
+      </Card>
+      <Card title="DFIQ" icon="book-open" href="https://github.com/google/dfiq">
+        Google's Digital Forensics Investigative Questions framework. Structured approach to decomposing investigative questions into data sources and analysis steps.
+      </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Additional references
+
+- [aboutdfir.com](https://aboutdfir.com/) — Community-maintained index of DFIR tools and resources
+- [Windows Forensic Artifacts](https://github.com/Psmths/windows-forensic-artifacts) — Detailed reference for Windows artifact locations and forensic significance
+- [ForensicArtifacts](https://github.com/ForensicArtifacts/artifacts) — Machine-readable forensic artifact definitions used by GRR, Velociraptor, and other tools
+- [Didier Stevens Tools](https://blog.didierstevens.com/programs/) — Collection of document analysis and DFIR utility scripts
+- [TZ Tools](https://www.tzworks.com/download_links.php) — Commercial Windows forensic parsers for MFT, Prefetch, LNK, and other artifact types
+- [Nirsoft Tools](https://www.nirsoft.net/) — Lightweight Windows utilities for browsing history, network activity, passwords, and system information

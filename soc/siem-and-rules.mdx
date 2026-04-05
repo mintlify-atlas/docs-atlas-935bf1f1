@@ -1,0 +1,375 @@
+---
+title: "SIEM & Detection Rules"
+description: "How to integrate the detection lists into Splunk, Elastic, Microsoft Sentinel, and QRadar"
+---
+
+The detection lists in this collection are structured CSV files with a consistent schema. Each row represents a known-suspicious indicator or pattern, and each file includes `metadata_*` columns that carry severity ratings, false-positive risk scores, tool attribution, and SIEM-specific detection hints.
+
+## Understanding the CSV schema
+
+Most lists share a common set of metadata columns:
+
+| Column | Description |
+|---|---|
+| `metadata_tool` | The tool or malware family associated with this indicator |
+| `metadata_category` | Technique category (e.g., `Privilege Escalation`, `C2`) |
+| `metadata_severity` | `critical`, `high`, `medium`, or `low` |
+| `metadata_fp_risk` | False positive risk: `none`, `low`, `medium`, `high` |
+| `metadata_usage` | `offensive_tool`, `greyware_tool`, `Detection rule` |
+| `metadata_reference` | Source URL for the indicator |
+
+The ThreatHunting Keywords lists (offensive and greyware) include additional SIEM-specific columns such as `metadata_*splunk*`, `metadata_*eql*`, `metadata_*elastic*`, `metadata_*sigma*`, and `metadata_*qradar*` that indicate which SIEM fields or query types are relevant for each keyword pattern.
+
+<Info>
+  Filter by `metadata_fp_risk = "none"` or `metadata_fp_risk = "low"` when first deploying a detection to minimize noise. Tune iteratively before raising severity thresholds.
+</Info>
+
+## Windows ASR rules
+
+The file [`windows_asr_rules.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/windows_asr_rules.csv) catalogs all Microsoft Defender Attack Surface Reduction (ASR) rules with their GUIDs, descriptions, and associated ATT&CK tactics. Use it to cross-reference which ASR rules cover the same ground as your SIEM detections or to build a deployment checklist.
+
+```text windows_asr_rules.csv (sample)
+id,asr_rule,metadata_comment,metadata_tactic
+56A863A9-875E-4185-98A7-B882C64B5CE5,Block abuse of exploited vulnerable signed drivers,...,Defense Evasion
+7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C,Block Adobe Reader from creating child processes,...,Execution
+```
+
+## Platform integration
+
+<Tabs>
+  <Tab title="Splunk">
+    ### Ingesting CSV lists as lookup tables
+
+    Upload the CSV file to Splunk and define it as a KV Store or file-based lookup. Once registered, you can reference it in any SPL search.
+
+    <Steps>
+      <Step title="Upload the CSV">
+        In Splunk Web, go to **Settings > Lookups > Lookup table files** and upload the CSV (e.g., `suspicious_windows_services_names_list.csv`).
+      </Step>
+      <Step title="Define the lookup">
+        Go to **Settings > Lookups > Lookup definitions** and create a new definition pointing to the uploaded file. Set the lookup name (e.g., `suspicious_windows_services`).
+      </Step>
+      <Step title="Use in a detection search">
+        Reference the lookup in SPL with the `lookup` command to enrich events or filter on known-bad values.
+      </Step>
+    </Steps>
+
+    ### Example: Detecting suspicious Windows services
+
+    This SPL query joins Windows Service Installation events (Event ID 7045) against the `suspicious_windows_services_names_list.csv` lookup to surface high-confidence matches.
+
+    ```splunk
+    index=windows EventCode=7045
+    | rename ServiceName AS service_name
+    | lookup suspicious_windows_services service_name OUTPUT metadata_tool, metadata_severity, metadata_category, metadata_fp_risk
+    | where isnotnull(metadata_tool) AND (metadata_severity="critical" OR metadata_severity="high")
+    | table _time, host, service_name, metadata_tool, metadata_severity, metadata_category, metadata_fp_risk
+    | sort - metadata_severity, _time
+    ```
+
+    <Tip>
+      Add `metadata_fp_risk!="high"` to the `where` clause to reduce false positives during initial deployment. Re-evaluate after baselining your environment.
+    </Tip>
+
+    ### Example: Detecting suspicious named pipes
+
+    Named pipe events appear in Sysmon Event ID 17 (pipe created) and Event ID 18 (pipe connected). The `suspicious_named_pipe_list.csv` file includes a `metadata_regex_cortex` column with pre-built regex patterns for tools that use dynamic pipe names.
+
+    ```splunk
+    index=sysmon EventCode=17 OR EventCode=18
+    | rename PipeName AS pipe_name
+    | lookup suspicious_named_pipes pipe_name OUTPUT metadata_tool, metadata_severity, metadata_category
+    | where isnotnull(metadata_tool)
+    | table _time, host, pipe_name, metadata_tool, metadata_severity, metadata_category
+    | sort - metadata_severity
+    ```
+
+    ### Example: Detecting suspicious HTTP user agents
+
+    ```splunk
+    index=proxy OR index=web
+    | rename cs_useragent AS http_user_agent
+    | lookup suspicious_http_user_agents http_user_agent OUTPUT metadata_tool, metadata_severity, metadata_fp_risk
+    | where isnotnull(metadata_tool)
+    | stats count, values(dest) AS destinations BY src_ip, http_user_agent, metadata_tool, metadata_severity
+    | sort - metadata_severity, count
+    ```
+  </Tab>
+
+  <Tab title="Elastic">
+    ### Ingesting CSV lists for enrichment
+
+    Elastic supports lookup-based enrichment through the **Enrich processor** in ingest pipelines or via the **Terms** query to match against index-stored lookup data.
+
+    <Steps>
+      <Step title="Index the CSV as a lookup index">
+        Convert the CSV to newline-delimited JSON and index it into a dedicated Elasticsearch index (e.g., `detection-lists-windows-services`).
+
+        ```bash
+        # Convert CSV to NDJSON using Python
+        python3 -c "
+        import csv, json, sys
+        with open('suspicious_windows_services_names_list.csv') as f:
+            for row in csv.DictReader(f):
+                print(json.dumps(row))
+        " > suspicious_windows_services.ndjson
+
+        # Bulk index into Elasticsearch
+        curl -s -H 'Content-Type: application/x-ndjson' \
+          -XPOST 'http://localhost:9200/detection-lists-windows-services/_bulk' \
+          --data-binary @<(awk '{print "{\"index\":{}}\n" $0}' suspicious_windows_services.ndjson)
+        ```
+      </Step>
+      <Step title="Create an enrich policy">
+        Define an enrich policy that uses `service_name` as the match field and outputs the metadata columns.
+
+        ```json
+        PUT /_enrich/policy/windows-services-policy
+        {
+          "match": {
+            "indices": "detection-lists-windows-services",
+            "match_field": "service_name",
+            "enrich_fields": [
+              "metadata_tool",
+              "metadata_severity",
+              "metadata_category",
+              "metadata_fp_risk"
+            ]
+          }
+        }
+
+        POST /_enrich/policy/windows-services-policy/_execute
+        ```
+      </Step>
+      <Step title="Add an enrich processor to your ingest pipeline">
+        ```json
+        PUT /_ingest/pipeline/windows-service-enrich
+        {
+          "processors": [
+            {
+              "enrich": {
+                "policy_name": "windows-services-policy",
+                "field": "winlog.event_data.ServiceName",
+                "target_field": "threat",
+                "max_matches": 1
+              }
+            }
+          ]
+        }
+        ```
+      </Step>
+    </Steps>
+
+    ### Example EQL rule: suspicious Windows service installation
+
+    Once events are enriched, use an EQL rule in Elastic Security to alert on high-severity matches.
+
+    ```text
+    sequence by host.name with maxspan=5m
+      [process where event.type == "start" and process.name == "services.exe"]
+      [any where event.code == "7045" and
+       threat.metadata_severity in ("critical", "high") and
+       threat.metadata_fp_risk in ("none", "low")]
+    ```
+
+    ### Example: Terms query for named pipe matching
+
+    For hunting without an enrich pipeline, use a terms lookup directly against the detection-list index.
+
+    ```json
+    GET /logs-endpoint.events.network-*/_search
+    {
+      "query": {
+        "terms": {
+          "process.pe.imphash": {
+            "index": "detection-lists-named-pipes",
+            "id": "suspicious",
+            "path": "pipe_name"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Microsoft Sentinel">
+    ### Uploading lists as Watchlists
+
+    Microsoft Sentinel supports CSV-based **Watchlists** natively. Upload any detection list as a Watchlist and reference it in KQL analytics rules.
+
+    <Steps>
+      <Step title="Create a Watchlist">
+        In the Sentinel portal, go to **Watchlists > New** and upload the CSV file. Set the **Search Key** to the primary indicator column (e.g., `service_name`, `pipe_name`, `http_user_agent`).
+      </Step>
+      <Step title="Reference the Watchlist in a KQL rule">
+        Use the `_GetWatchlist()` function to join the Watchlist against your event data.
+      </Step>
+    </Steps>
+
+    ### Example: KQL rule for suspicious Windows services
+
+    ```kusto
+    let SuspiciousServices = _GetWatchlist('suspicious-windows-services')
+        | where metadata_severity in ("critical", "high")
+        | project service_name, metadata_tool, metadata_severity, metadata_category, metadata_fp_risk;
+    SecurityEvent
+    | where EventID == 7045
+    | join kind=inner SuspiciousServices on $left.ServiceName == $right.service_name
+    | where metadata_fp_risk in ("none", "low")
+    | project TimeGenerated, Computer, ServiceName, metadata_tool, metadata_severity, metadata_category
+    | sort by TimeGenerated desc
+    ```
+
+    ### Example: KQL hunting query for suspicious named pipes
+
+    ```kusto
+    let SuspiciousPipes = _GetWatchlist('suspicious-named-pipes')
+        | project pipe_name, metadata_tool, metadata_severity, metadata_category;
+    DeviceEvents
+    | where ActionType in ("NamedPipeEvent")
+    | join kind=inner SuspiciousPipes on $left.AdditionalFields has $right.pipe_name
+    | project Timestamp, DeviceName, InitiatingProcessFileName, pipe_name,
+              metadata_tool, metadata_severity, metadata_category
+    | sort by Timestamp desc
+    ```
+
+    <Note>
+      For regex-based pipe names (where adversaries randomize part of the pipe name), use the `metadata_regex_cortex` column from `suspicious_named_pipe_list.csv` and apply `matches regex` in your KQL query instead of an exact string join.
+    </Note>
+
+    ### Example: Detecting suspicious HTTP user agents
+
+    ```kusto
+    let SuspiciousAgents = _GetWatchlist('suspicious-user-agents')
+        | where metadata_fp_risk in ("none", "low")
+        | project http_user_agent, metadata_tool, metadata_severity;
+    CommonSecurityLog
+    | where DeviceVendor == "Zscaler" or DeviceVendor == "Palo Alto Networks"
+    | join kind=inner SuspiciousAgents on $left.RequestClientApplication == $right.http_user_agent
+    | project TimeGenerated, SourceIP, DestinationHostName,
+              RequestClientApplication, metadata_tool, metadata_severity
+    | sort by TimeGenerated desc
+    ```
+  </Tab>
+
+  <Tab title="QRadar">
+    ### Uploading lists as Reference Sets
+
+    IBM QRadar supports **Reference Sets** and **Reference Maps** for lookup-based detections. Import the CSV indicator values into a Reference Set and use them in custom rules.
+
+    <Steps>
+      <Step title="Create a Reference Set">
+        In the QRadar Console, go to **Admin > Reference Set Management** and create a new Reference Set with the appropriate data type (`ALN` for strings, `ALNIC` for case-insensitive strings).
+      </Step>
+      <Step title="Import CSV data via CLI">
+        Use the QRadar REST API or the `ReferenceDataUtil.sh` script to bulk-import values from the CSV.
+
+        ```bash
+        # Example using curl and the QRadar REST API
+        curl -X POST \
+          "https://<qradar-host>/api/reference_data/sets/bulk_load/suspicious_windows_services" \
+          -H "SEC: <api-token>" \
+          -H "Content-Type: application/json" \
+          -d '["LiveLet_*", "parsecvirtualds", "RustPotato"]'
+        ```
+      </Step>
+      <Step title="Reference the set in a custom rule">
+        Build a custom rule that triggers when a Windows Service Installation event contains a value present in the `suspicious_windows_services` Reference Set.
+      </Step>
+    </Steps>
+
+    ### Example custom rule logic
+
+    ```text
+    when the following is true:
+      the event matches the following expression:
+        EventID is 7045
+        AND ServiceName is contained in the Reference Set "suspicious_windows_services"
+    then ensure the detected event is part of an offense
+      annotated with: "Suspicious Windows Service - matched detection list"
+    ```
+
+    <Warning>
+      QRadar Reference Sets do not natively support wildcard or regex matching. For patterns with wildcards (common in service and pipe name lists), pre-expand the patterns or use a custom AQL query with `LIKE` expressions instead.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Sigma rule integration workflow
+
+Sigma rules can be authored to directly reference these lists by loading them as external lookup tables or by hardcoding high-priority indicators from the lists.
+
+### Example: Sigma rule for suspicious named pipes
+
+```yaml
+title: Suspicious Named Pipe - Known Offensive Tool
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+status: stable
+description: Detects creation of named pipes associated with known offensive tools and post-exploitation frameworks.
+references:
+  - https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_named_pipe_list.csv
+  - https://detect.fyi/threat-hunting-suspicious-named-pipes-a4206e8a4bc8
+author: mthcht
+date: 2024/01/01
+tags:
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1055
+logsource:
+  category: pipe_created
+  product: windows
+detection:
+  selection:
+    PipeName|contains:
+      - '\RustPotato'
+      - '\msagent_'
+      - '\SharpGPOAbuse'
+      - '\mojo.5688.8052'
+      - '\postex_'
+      - '\status_'
+      - '\mypipe-f'
+      - '\mypipe-h'
+  condition: selection
+falsepositives:
+  - Legitimate applications using similar pipe names (verify with metadata_fp_risk column in the source list)
+level: high
+```
+
+<Info>
+  Convert this Sigma rule to your target SIEM format using [sigma-cli](https://github.com/SigmaHQ/sigma-cli) or the online converter at [Uncoder.io](https://uncoder.io/). Use the `--target splunk`, `--target elastic-rule`, or `--target sentinel` backend flags as appropriate.
+</Info>
+
+### Example: Sigma rule for suspicious Windows services
+
+```yaml
+title: Suspicious Windows Service Installation - Known Tool
+id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+status: stable
+description: Detects Windows service installations matching names associated with known remote access tools and offensive frameworks.
+references:
+  - https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_windows_services_names_list.csv
+author: mthcht
+date: 2024/01/01
+tags:
+  - attack.persistence
+  - attack.t1543.003
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    EventID: 7045
+    ServiceName|contains:
+      - 'LiveLet'
+      - 'parsecvirtualds'
+      - 'AnyDesk'
+      - 'mstsc_tunnel'
+  condition: selection
+falsepositives:
+  - Legitimate RMM tools deployed by the organization — cross-reference with approved software inventory
+level: high
+```
+
+<Tip>
+  When building Sigma rules from the lists, prioritize rows where `metadata_fp_risk` is `none` or `low` and `metadata_severity` is `critical` or `high`. These give the best signal-to-noise ratio without environment-specific tuning.
+</Tip>

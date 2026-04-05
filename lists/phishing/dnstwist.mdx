@@ -1,0 +1,153 @@
+---
+title: "DNSTWIST Phishing Detection"
+description: "Using DNSTWIST to generate and detect lookalike domains targeting your organization"
+---
+
+[DNSTWIST](https://github.com/elceef/dnstwist) is an open-source tool that generates domain name permutations for a target domain using a range of techniques attackers use for typosquatting and phishing infrastructure. By generating these permutations proactively and monitoring DNS for matches, you can detect phishing campaigns targeting your organization—or your users—before victims click a link.
+
+<Info>
+  Read the full detection guide: [Detecting Phishing Attempts with DNSTWIST](https://detect.fyi/detecting-phishing-attempts-with-dnstwist-37c426b3bbb8)
+</Info>
+
+## How DNSTWIST Works
+
+DNSTWIST generates lookalike domains using multiple mutation techniques:
+
+| Technique | Description | Example (microsoft.com) |
+|-----------|-------------|------------------------|
+| **Addition** | Appends a character to the domain | `microsofts.com`, `microsoft7.com` |
+| **Bitsquatting** | Flips a single bit in the domain string | `oicrosoft.com` |
+| **Homoglyph** | Replaces characters with visually similar Unicode | `mіcrosoft.com` (Cyrillic і) |
+| **Hyphenation** | Inserts hyphens between characters | `m-icrosoft.com` |
+| **Omission** | Removes a character | `mcrosoft.com` |
+| **Repetition** | Doubles a character | `miccrosoft.com` |
+| **Replacement** | Replaces adjacent keyboard characters | `nicrosoft.com` |
+| **Subdomain** | Inserts a dot to create a subdomain pattern | `micro.soft.com` |
+| **Transposition** | Swaps adjacent characters | `mircrosoft.com` |
+| **TLD substitution** | Changes the top-level domain | `microsoft.net`, `microsoft.org` |
+| **Vowel swap** | Replaces vowels with alternate vowels | `mecrosoft.com` |
+
+## Pre-Generated Lists
+
+The `Lists/Phishing/DNSTWIST/` directory contains pre-generated DNSTWIST output CSVs for commonly targeted domains, updated daily via GitHub Actions.
+
+**Directory:** `https://github.com/mthcht/awesome-lists/tree/main/Lists/Phishing/DNSTWIST`
+
+### Included Domains
+
+| Domain | File |
+|--------|------|
+| `microsoft.com` | `microsoft.com_dnstwist_list.csv` |
+| `login.microsoftonline.com` | `login.microsoftonline.com_dnstwist_list.csv` |
+| `developer.microsoft.com` | `developer.microsoft.com_dnstwist_list.csv` |
+| `linkedin.com` | `linkedin.com_dnstwist_list.csv` |
+| `pay.amazon.com` | `pay.amazon.com_dnstwist_list.csv` |
+| `secure.paypal.com` | `secure.paypal.com_dnstwist_list.csv` |
+| `bankofamerica.com` | `bankofamerica.com_dnstwist_list.csv` |
+| `facebook.com` | `facebook.com_dnstwist_list.csv` |
+| `crowdstrike.com` | `crowdstrike.com_dnstwist_list.csv` |
+| `orangecyberdefense.com` | `orangecyberdefense.com_dnstwist_list.csv` |
+| French public services (`impots.gouv.fr`, `service-public.fr`, `francetravail.fr`, etc.) | Multiple files |
+| French banking (`credit-agricole.fr`, `labanquepostale.fr`, etc.) | Multiple files |
+| Olympics 2024 (`paris2024.org`, `olympics.com`, `franceolympique.com`) | Multiple files |
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `fuzzer` | Mutation technique used (e.g. `addition`, `bitsquatting`, `homoglyph`) |
+| `domain` | The generated lookalike domain |
+| `dns_a` | IPv4 address if the domain resolves (indicates registered/live domain) |
+| `dns_aaaa` | IPv6 address if the domain resolves |
+| `dns_mx` | MX record if present (indicates the domain can send email — high risk) |
+| `dns_ns` | Name server record |
+
+Domains with populated `dns_a` or `dns_mx` columns are actively registered and should be prioritized for investigation.
+
+### Example Output (microsoft.com)
+
+| Fuzzer | Domain | DNS A | DNS MX |
+|--------|--------|-------|--------|
+| `*original` | `microsoft.com` | `150.171.109.147` | `microsoft-com.mail.protection.outlook.com` |
+| `addition` | `microsofts.com` | `103.224.182.245` | `park-mx.above.com` |
+| `addition` | `microsofth.com` | `103.224.212.124` | — |
+
+## Generate Lists for Your Own Domains
+
+The `get_dnstwist.py` script automates running DNSTWIST against a list of domains and writing normalized CSV output.
+
+**Script:** `Lists/Phishing/DNSTWIST/get_dnstwist.py`
+
+### Prerequisites
+
+```bash
+pip install dnstwist
+```
+
+### Usage
+
+<Tabs>
+  <Tab title="Single domain">
+    ```bash
+    python get_dnstwist.py yourdomain.com
+    ```
+  </Tab>
+  <Tab title="Multiple domains">
+    ```bash
+    python get_dnstwist.py yourdomain.com partnerdomain.com
+    ```
+  </Tab>
+  <Tab title="From file">
+    Create `domains_list.txt` with one domain per line, then run:
+    ```bash
+    python get_dnstwist.py domains_list.txt
+    ```
+  </Tab>
+</Tabs>
+
+The script outputs one CSV per domain named `<domain>_dnstwist_list.csv` using the same column schema as the pre-generated lists.
+
+## Detection Workflow
+
+<Steps>
+  <Step title="Generate the lookalike list">
+    Run `get_dnstwist.py` against your organization's primary domains (corporate domain, brand domains, product domains). Schedule this as a daily cron job or GitHub Actions workflow to keep the list current as new domains are registered.
+  </Step>
+  <Step title="Filter to active domains">
+    Focus on rows where `dns_a` or `dns_mx` is populated — these domains are registered and potentially live phishing infrastructure.
+  </Step>
+  <Step title="Load into SIEM as a lookup table">
+    Import the CSV as a lookup table. In Splunk, use `| inputlookup yourdomain.com_dnstwist_list.csv` or configure an automatic lookup against the `domain` field.
+  </Step>
+  <Step title="Alert on DNS resolution matches">
+    Join internal DNS query logs against the `domain` column. Any internal host resolving a lookalike domain is a high-fidelity phishing indicator.
+  </Step>
+  <Step title="Alert on proxy/email matches">
+    Match proxy destination hostnames and email link domains against the lookalike list. An email containing a link to a registered lookalike domain should trigger an immediate alert.
+  </Step>
+</Steps>
+
+### Splunk — DNS Alert
+
+```spl
+index=dns
+| lookup yourdomain_com_dnstwist_list domain AS query OUTPUT fuzzer, dns_a, dns_mx
+| where isnotnull(fuzzer)
+| table _time, src_ip, query, fuzzer, dns_a, dns_mx
+| sort - dns_mx
+```
+
+## Dynamic DNS Abuse
+
+Attackers frequently use Dynamic DNS (DDNS) providers to rapidly rotate infrastructure IP addresses while keeping a stable domain, making blocklists less effective. The `Lists/DYNDNS/dyndns_list.csv` list tracks known DDNS provider domains for detection.
+
+**File:** `Lists/DYNDNS/dyndns_list.csv`
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/DYNDNS/dyndns_list.csv`
+
+Match DNS query logs or proxy destination domains against this list to identify hosts communicating with DDNS-hosted infrastructure—a common C2 and phishing hosting pattern.
+
+<Tip>
+  Combine DNSTWIST lookalike monitoring with the phishing domain feeds from [Phishing Domains](/lists/phishing/phishing-domains). A lookalike domain that also appears in a phishing feed is a confirmed threat; a lookalike that resolves but hasn't been reported yet is an early warning signal.
+</Tip>

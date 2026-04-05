@@ -1,0 +1,76 @@
+---
+title: "Suspicious Windows Services"
+description: "Detection list of suspicious Windows service names used by malware, RATs, and offensive tools"
+---
+
+This list catalogs Windows service names associated with known offensive tools, malware families, RATs, and persistence implants. Service names are a reliable detection signal because tools frequently register themselves under predictable, hardcoded names. Matching installed service names against this list surfaces both active infections and post-exploitation activity.
+
+<Info>
+  This list is maintained at [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists) and referenced in the threat hunting guide: [Threat Hunting Suspicious Windows Service Names](https://detect.fyi/threat-hunting-suspicious-windows-service-names-2f0dceea204c).
+</Info>
+
+## CSV structure
+
+Download: [`suspicious_windows_services_names_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_services_names_list.csv)
+
+| Column | Description |
+|---|---|
+| `service_name` | The service name or pattern (wildcards supported, e.g. `LiveLet_*`) |
+| `service_path` | Expected binary path or pattern associated with the service |
+| `metadata_tool_name` | Name of the tool or malware family that registers this service |
+| `metadata_tool_category` | Category of the tool (e.g. `RMM`, `Ransomware`, `Persistence`) |
+| `metadata_tool_type` | Classification: `offensive_tool`, `greyware_tool` |
+| `metadata_severity` | Severity rating: `low`, `medium`, `high`, `critical` |
+| `metadata_comment` | Human-readable description of why this entry is suspicious |
+| `metadata_reference` | Source URL(s) supporting the entry |
+
+## Detection approach
+
+Windows records every new service installation in **Event ID 7045** (`System` log, source `Service Control Manager`). Join this event against the lookup list to alert on known-bad service names at install time.
+
+### Splunk — detect suspicious service installation
+
+```text
+index=wineventlog source="WinEventLog:System" EventCode=7045
+| eval service_name_lower=lower(ServiceName)
+| lookup suspicious_windows_services_names_list.csv service_name AS service_name_lower
+    OUTPUT metadata_tool_name, metadata_severity, metadata_comment
+| where isnotnull(metadata_tool_name)
+| table _time, host, ServiceName, ServiceFileName, metadata_tool_name, metadata_severity, metadata_comment
+| sort -metadata_severity, _time
+```
+
+<Note>
+  Use `inputlookup` to load the CSV as a Splunk lookup table. Wildcard entries (those containing `*`) require a `WILDCARD` lookup definition in `transforms.conf`.
+</Note>
+
+### Splunk — lookup table definition (`transforms.conf`)
+
+```text
+[suspicious_windows_services_names_list]
+filename = suspicious_windows_services_names_list.csv
+match_type = WILDCARD(service_name)
+case_sensitive_match = false
+```
+
+## Severity tiers
+
+<CardGroup cols={2}>
+  <Card title="Critical" icon="circle-x">
+    Service names exclusively associated with offensive tools or known malware (e.g. `UnstoppableService`, ransomware installers). Investigate immediately.
+  </Card>
+  <Card title="High" icon="triangle-alert">
+    Service names strongly linked to attack campaigns or dual-use tools actively abused by threat actors.
+  </Card>
+  <Card title="Medium" icon="info">
+    Remote monitoring and management (RMM) tools frequently abused in intrusions. Validate whether the software is authorized.
+  </Card>
+  <Card title="Low" icon="circle-check">
+    Greyware or ambiguous entries. Use as hunting signals rather than high-confidence alerts.
+  </Card>
+</CardGroup>
+
+## Related lists
+
+- [`windows_asr_rules.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/windows_asr_rules.csv) — Windows Attack Surface Reduction rules that block many of the same tool categories
+- [`suspicious_windows_tasks_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_tasks_list.csv) — Scheduled tasks used alongside services for persistence

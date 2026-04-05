@@ -1,0 +1,168 @@
+---
+title: "TOR Exit Nodes"
+description: "Automatically updated list of TOR network exit node IP addresses"
+---
+
+The TOR (The Onion Router) network anonymizes internet traffic by routing it through a series of relays before it exits onto the public internet through an **exit node**. Monitoring network connections to or from known TOR exit node IP addresses is a high-value detection signal because:
+
+- Threat actors use TOR to reach C2 infrastructure while hiding their true origin
+- Attackers conducting reconnaissance, credential stuffing, or exploitation often source traffic through TOR
+- Data exfiltration can be routed through TOR to prevent attribution
+- Ransomware operators frequently communicate with payment portals and victim support channels via TOR-accessible .onion services
+
+<Warning>
+  The TOR network is also used for legitimate privacy purposes. In enterprise environments, connections from internal hosts to TOR exit nodes are almost always policy violations and warrant investigation regardless of intent.
+</Warning>
+
+## Lists in this category
+
+All lists in the `Lists/TOR/` directory are updated automatically on a scheduled basis to track the constantly changing set of active TOR relay operators.
+
+<CardGroup cols={2}>
+  <Card title="only_tor_exit_nodes_IP_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/TOR/only_tor_exit_nodes_IP_list.csv">
+    ~8,570 exit node IPs — best for network blocking and alerting
+  </Card>
+  <Card title="TOR_nodes_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/TOR/TOR_nodes_list.csv">
+    Full node list including guard, middle, and exit relays with rich metadata
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="only_tor_guard_nodes_IP_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/TOR/only_tor_guard_nodes_IP_list.csv">
+    Guard (entry) node IPs for detecting TOR circuit entry points
+  </Card>
+  <Card title="Browse TOR directory on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/TOR/">
+    Full directory including historical node data and update scripts
+  </Card>
+</CardGroup>
+
+## CSV structure
+
+### only_tor_exit_nodes_IP_list.csv
+
+This is the most operationally useful file for firewall rules and SIEM lookups. It contains a single column:
+
+```csv
+dest_ip
+204.137.14.106
+178.218.144.18
+```
+
+### TOR_nodes_list.csv
+
+The full node list includes rich metadata for each relay:
+
+| Column | Description |
+|---|---|
+| `metadata_nickname` | Self-assigned relay nickname |
+| `metadata_fingerprint` | Unique relay fingerprint (SHA-1) |
+| `metadata_last_seen` | Timestamp of last consensus appearance |
+| `metadata_first_seen` | Timestamp the relay first appeared |
+| `metadata_running` | Whether the relay is currently active (`True`/`False`) |
+| `metadata_country` | Two-letter country code of the relay |
+| `metadata_country_name` | Full country name |
+| `metadata_as` | Autonomous system number |
+| `metadata_as_name` | ASN operator name |
+| `metadata_guard_probability` | Probability of being selected as a guard node |
+| `metadata_exit_probability` | Probability of being selected as an exit node |
+| `dest_ip` | IP address of the relay |
+| `dest_port` | OR port the relay listens on |
+| `metadata_dest_role` | Relay role: `guard`, `exit`, `middle` |
+| `dest_nt_host` | Reverse DNS hostname (if available) |
+
+## Detection and blocking
+
+The appropriate response depends on your environment and acceptable use policy.
+
+<Tabs>
+  <Tab title="Splunk">
+    Load `only_tor_exit_nodes_IP_list.csv` as a Splunk lookup table, then use it to enrich and alert on network events:
+
+    ```spl
+    | inputlookup only_tor_exit_nodes_IP_list.csv
+    | rename dest_ip as tor_exit_ip
+    | table tor_exit_ip
+    ```
+
+    Alert on internal hosts connecting to TOR exit nodes:
+
+    ```spl
+    index=network sourcetype=firewall
+    | lookup only_tor_exit_nodes_IP_list.csv dest_ip OUTPUT dest_ip AS tor_match
+    | where isnotnull(tor_match)
+    | stats count, values(dest_port) as ports by src_ip dest_ip
+    | table _time src_ip dest_ip ports count
+    ```
+
+    Alert on inbound connections **from** TOR exit nodes (e.g., to public-facing services):
+
+    ```spl
+    index=network sourcetype=firewall action=allowed
+    | lookup only_tor_exit_nodes_IP_list.csv src_ip AS dest_ip OUTPUT dest_ip AS tor_exit
+    | where isnotnull(tor_exit)
+    | stats count by src_ip dest_ip dest_port
+    ```
+
+    Use the full `TOR_nodes_list.csv` to enrich with relay metadata:
+
+    ```spl
+    index=network sourcetype=proxy
+    | lookup TOR_nodes_list.csv dest_ip OUTPUT metadata_nickname metadata_country_name metadata_as_name metadata_dest_role
+    | where isnotnull(metadata_dest_role)
+    | table _time src_ip dest_ip metadata_nickname metadata_country_name metadata_as_name metadata_dest_role
+    ```
+  </Tab>
+  <Tab title="Elastic">
+    Import the exit node list into a reference index keyed on `dest_ip` and apply an enrich processor to your network pipeline:
+
+    ```json
+    GET network-*/_search
+    {
+      "query": {
+        "terms": {
+          "destination.ip": ["204.137.14.106", "178.218.144.18"]
+        }
+      }
+    }
+    ```
+
+    KQL query to find connections to any TOR exit node (assumes enriched field):
+
+    ```text
+    threat.indicator.type: "ipv4-addr" and threat.indicator.marking.tlp: "TOR"
+    ```
+
+    Or if you tag events during ingestion:
+
+    ```text
+    tags: "tor_exit_node" and not source.ip: 10.0.0.0/8
+    ```
+  </Tab>
+  <Tab title="Firewall / NGFW">
+    Use the `only_tor_exit_nodes_IP_list.csv` to populate a dynamic IP blocklist or threat feed in your firewall.
+
+    For monitoring without blocking (recommended as a first step):
+
+    1. Create a security policy matching traffic to/from the TOR exit IP list
+    2. Set the action to **allow with logging** (not deny)
+    3. Route matching events to your SIEM for analyst review
+    4. After a baselining period, escalate to a block policy if no legitimate TOR usage is identified
+
+    For environments where TOR is prohibited by policy, block outbound connections to exit node IPs at the perimeter and alert on DNS lookups for known `.onion` relay infrastructure.
+  </Tab>
+</Tabs>
+
+## Monitoring vs. blocking
+
+<CardGroup cols={2}>
+  <Card title="Monitor (alert)" icon="bell">
+    Best for most enterprises during an initial deployment phase. Log all connections to/from TOR exit nodes and trigger analyst review. Allows you to identify legitimate use cases before enforcing a block policy.
+  </Card>
+  <Card title="Block" icon="shield-x">
+    Appropriate once you have confirmed that TOR is not used for any legitimate business purpose. Block outbound connections from internal hosts to exit node IPs at the firewall level, and alert on attempts to connect.
+  </Card>
+</CardGroup>
+
+<Note>
+  Because the TOR network's relay roster changes continuously, these lists are refreshed automatically. Always pull the latest version of the CSV before deploying updated firewall rules or refreshing your SIEM lookup. The `metadata_running: True` flag in `TOR_nodes_list.csv` indicates nodes currently active in the consensus.
+</Note>

@@ -1,0 +1,69 @@
+---
+title: "DFIR Overview"
+description: "Digital forensics and incident response resources, tools, and workflows"
+---
+
+Digital Forensics and Incident Response (DFIR) is the discipline of identifying, preserving, analyzing, and presenting digital evidence in support of security investigations. This collection curates the tools, frameworks, and resources that SOC analysts, DFIR practitioners, and CTI teams rely on during real-world incident response engagements.
+
+## What this collection covers
+
+The DFIR section of this list is organized around the key phases of an investigation: collecting volatile and persistent artifacts, parsing event logs, reconstructing timelines, analyzing memory, and performing network forensics. Each category links to actively maintained tools used in production environments.
+
+## Tool categories
+
+<AccordionGroup>
+  <Accordion title="Artifact collection">
+    Tools for acquiring forensic artifacts from live and offline systems. This includes triage collectors like KAPE and Velociraptor that gather filesystem artifacts, registry hives, event logs, and prefetch files from Windows endpoints, as well as UAC for Linux host collection.
+  </Accordion>
+  <Accordion title="Event log analysis">
+    Parsers and hunters for Windows Event Log (EVTX) data. Tools like Hayabusa, chainsaw, and Zircolite apply Sigma rules against EVTX files to surface suspicious activity without requiring a SIEM.
+  </Accordion>
+  <Accordion title="Memory forensics">
+    Acquisition tools (WinPmem, avml, LiME) and analysis frameworks (Volatility3, MemProcFS) for capturing and interrogating physical memory to uncover injected code, credential material, and running processes invisible to the OS.
+  </Accordion>
+  <Accordion title="Timeline analysis">
+    Super-timeline builders like Plaso/log2timeline aggregate timestamps from hundreds of artifact types into a single chronological view. Timesketch provides a collaborative web interface for navigating large timelines.
+  </Accordion>
+  <Accordion title="Network forensics">
+    Tools for capturing, reassembling, and inspecting network traffic. NetworkMiner reconstructs sessions and extracts files from PCAPs; Wireshark provides deep protocol dissection.
+  </Accordion>
+  <Accordion title="Registry analysis">
+    RegRipper automates extraction of forensically relevant keys and values from registry hive files, covering persistence, user activity, USB history, and more.
+  </Accordion>
+  <Accordion title="Persistence and injection detection">
+    PersistenceSniper enumerates known persistence mechanisms on live Windows systems. hollows_hunter and PE-sieve scan running processes for injected shellcode and PE anomalies.
+  </Accordion>
+</AccordionGroup>
+
+## Pages in this section
+
+<CardGroup cols={2}>
+  <Card title="DFIR Tools" icon="wrench" href="/dfir/tools">
+    Curated list of DFIR tools organized by category: artifact collection, event log analysis, timeline analysis, registry, network forensics, persistence detection, and more.
+  </Card>
+  <Card title="Memory Forensics" icon="cpu" href="/dfir/memory-forensics">
+    Memory acquisition and analysis tools, including Volatility3, MemProcFS, WinPmem, avml, and LiME, with a step-by-step workflow and command examples.
+  </Card>
+</CardGroup>
+
+## DFIR operating systems
+
+Several Linux distributions are purpose-built for forensic investigations, shipping with hundreds of pre-installed tools and calibrated configurations:
+
+| Distribution | Maintainer | Focus |
+|---|---|---|
+| [SIFT Workstation](https://www.sans.org/tools/sift-workstation/) | SANS Institute | General DFIR, Windows and Linux artifacts |
+| [Remnux](https://remnux.org/) | Lenny Zeltser / SANS | Malware analysis and reverse engineering |
+| [sof-elk](https://github.com/philhagen/sof-elk) | Phil Hagen / SANS | Log ingestion and analysis with ELK stack |
+| [tsurugi](https://tsurugi-linux.org/) | Tsurugi Project | Full-featured DFIR and OSINT platform |
+| [Flare VM](https://github.com/mandiant/flare-vm) | Mandiant | Windows-based malware analysis environment |
+
+<Note>
+  DEFT Linux is listed in the source repository but is no longer actively maintained. Prefer SIFT Workstation or tsurugi for new deployments.
+</Note>
+
+## Investigation resources
+
+For threat intelligence lookups, sandbox analysis, and IOC enrichment during active investigations, see the Investigation section of this collection, which covers TI check services (VirusTotal, Shodan, AbuseIPDB), sandboxes (Any.run, Cape, Joe Sandbox), and data manipulation tools (CyberChef, CyberGordon).
+
+The source repository also maintains continuously updated detection lists — suspicious services, tasks, ports, user-agents, and more — at [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists/tree/main/Lists).

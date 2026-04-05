@@ -1,97 +1,84 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Awesome Security Lists"
+description: "Curated detection lists, IOC feeds, YARA rules, and security resources for SOC analysts, DFIR responders, and cyber threat intelligence teams."
 ---
 
-## Setting up
+A community-maintained collection of high-signal security detection data. These lists power threat hunting queries, detection rules, and incident response workflows across SIEM platforms, EDR tools, and custom detection pipelines.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Get Started" icon="rocket" href="/introduction">
+    Learn how to use and integrate the detection lists into your security stack.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Detection Lists" icon="list-check" href="/lists/network/suspicious-ports">
+    Browse all curated CSV detection lists organized by category.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Threat Hunting" icon="crosshairs" href="/threat-hunting/overview">
+    Keywords, YARA rules, and hunting techniques for proactive detection.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="DFIR Resources" icon="magnifying-glass" href="/dfir/overview">
+    Tools and workflows for digital forensics and incident response.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What's included
 
-Everything you need to create world-class documentation.
+<CardGroup cols={3}>
+  <Card title="Network & Infrastructure" icon="network-wired" href="/lists/network/suspicious-ports">
+    Suspicious ports, DNS-over-HTTPS servers, TOR nodes, VPN IPs, and ASN/TLD blocklists.
+  </Card>
+  <Card title="Host & Process Indicators" icon="desktop" href="/lists/host/windows-services">
+    Windows services, scheduled tasks, named pipes, mutex names, and executable metadata.
+  </Card>
+  <Card title="Malware & Threats" icon="shield-virus" href="/lists/malware/ransomware">
+    Ransomware extensions, ransom notes, LOLDrivers, malicious bootloaders, and SSL certs.
+  </Card>
+  <Card title="RMM Tool Detection" icon="screwdriver-wrench" href="/lists/malware/rmm-tools">
+    Detection patterns for 50+ remote management and monitoring tools abused by attackers.
+  </Card>
+  <Card title="Phishing Intelligence" icon="fish-fins" href="/lists/phishing/phishing-domains">
+    Phishing domains, malicious browser extensions, and DNSTWIST-generated lookalikes.
+  </Card>
+  <Card title="Identity & Access" icon="id-card" href="/lists/identity/user-agents">
+    Suspicious user agents, USB IDs, MAC addresses, hostnames, and AD/EntraID permissions.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## How to use these lists
 
-## Need inspiration?
+<Steps>
+  <Step title="Choose your detection category">
+    Browse the Detection Lists tab to find the CSV files relevant to your threat hunting or detection use case — network indicators, host artifacts, malware signatures, or identity data.
+  </Step>
+  <Step title="Download the CSV directly from GitHub">
+    Each list is a CSV file hosted on GitHub. Download it directly or reference the raw URL in your SIEM query or detection rule pipeline.
+  </Step>
+  <Step title="Integrate into your SIEM or EDR">
+    Use the list as a lookup table in Splunk, an enrichment source in Elastic, or a reference dataset in any SIEM that supports CSV lookups. See the [quickstart guide](/quickstart) for platform-specific examples.
+  </Step>
+  <Step title="Keep lists up to date">
+    Many lists are updated automatically (TOR nodes, VPN IPs, ASNs, TLDs, hijacklibs, LOLDrivers). Set up a scheduled pull or webhook to keep your lookups current.
+  </Step>
+</Steps>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+## Automatically updated lists
+
+Several lists in this collection are refreshed automatically via GitHub Actions, ensuring you always have current data:
+
+<CardGroup cols={2}>
+  <Card title="TOR Exit Nodes" icon="circle-nodes" href="/lists/network/tor-nodes">
+    Updated TOR exit node IP addresses for detecting anonymized traffic.
+  </Card>
+  <Card title="VPN Server IPs" icon="shield" href="/lists/network/vpn-and-proxy">
+    NordVPN, ProtonVPN, Surfshark, and Mullvad server IP lists.
+  </Card>
+  <Card title="Suspicious TLDs & ASNs" icon="globe" href="/lists/network/tlds-and-asns">
+    Continuously updated lists of high-risk top-level domains and ASNs.
+  </Card>
+  <Card title="LOLDrivers & Hijacklibs" icon="microchip" href="/lists/malware/drivers-and-bootloaders">
+    Living-off-the-land driver hashes and DLL hijacking opportunity library.
+  </Card>
+</CardGroup>
+
+<Note>
+  All lists are MIT licensed and free to use. Contributions and corrections are welcome via [GitHub](https://github.com/mthcht/awesome-lists).
+</Note>

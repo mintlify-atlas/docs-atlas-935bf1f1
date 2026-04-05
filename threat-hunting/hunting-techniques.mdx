@@ -1,0 +1,169 @@
+---
+title: "Hunting Techniques"
+description: "Specific threat hunting techniques and search queries for common attack patterns"
+---
+
+This page covers twelve hunting techniques derived from the detection lists in this project. Each technique addresses a specific attacker behavior or detection surface, references the relevant list or resource, and links to a detailed blog post with tested query examples.
+
+All hunting searches are available in the [ThreatHunting/generic](https://github.com/mthcht/Purpleteam/tree/main/Detection/Threat%20Hunting/generic) directory of the Purpleteam repository.
+
+<AccordionGroup>
+
+  <Accordion title="Windows services hunting" icon="gears">
+    **What it detects:** Attackers frequently install malicious services to achieve persistence or run tools under a privileged context. Suspicious service names include known offensive tool defaults, randomly generated strings, and names designed to blend in with legitimate services.
+
+    **List to use:** [`suspicious_windows_services_names_list.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_windows_services_names_list.csv)
+
+    The CSV contains service names associated with known offensive tools, red team frameworks, and living-off-the-land binaries used as services. Import it as a lookup and join against Windows Security Event 7045 (service installed) or Sysmon Event 1 (process creation with service host context).
+
+    **Query approach:** Match the `ServiceName` field from Event ID 7045 against the lookup. Alert on any service name present in the list, or on service names with high entropy that do not match any known-good baseline.
+
+    **Reference:** [Threat Hunting Suspicious Windows Service Names](https://detect.fyi/threat-hunting-suspicious-windows-service-names-2f0dceea204c)
+  </Accordion>
+
+  <Accordion title="User-agent hunting" icon="globe">
+    **What it detects:** Tools and malware that make HTTP requests often use hardcoded or distinctive user-agent strings. Hunting on known-bad user agents across proxy and web server logs surfaces C2 beaconing, tool usage, and staging activity.
+
+    **List to use:** [`suspicious_http_user_agents_list.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_http_user_agents_list.csv)
+
+    The list includes user-agent strings from post-exploitation frameworks (Cobalt Strike, Metasploit, Sliver), offensive tools (curl-based stagers, PowerShell web clients), and malware families. Each entry includes the associated tool or family name.
+
+    **Query approach:** Load the CSV as a SIEM lookup, then match against the `cs_useragent` or `http.user_agent` field in proxy or web access logs. Prioritize matches on internal hosts that should not be generating outbound HTTP traffic with offensive tool user agents.
+
+    **Reference:** [Threat Hunting Suspicious User Agents](https://mthcht.medium.com/threat-hunting-suspicious-user-agents-3dd764470bd0)
+  </Accordion>
+
+  <Accordion title="DNS-over-HTTPS detection" icon="lock">
+    **What it detects:** Attackers use DNS-over-HTTPS (DoH) to bypass traditional DNS monitoring. Connections to known DoH providers from endpoints that should not be using them indicate potential C2 traffic or data exfiltration attempts.
+
+    **List to use:** [`dns_over_https_servers_list.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/dns_over_https_servers_list.csv)
+
+    The list enumerates known DoH provider IPs and domains. Use it to detect direct IP connections to DoH endpoints (bypassing DNS) or HTTPS traffic to DoH domains from unexpected hosts.
+
+    **Query approach:** Match outbound HTTPS connections (destination port 443) against the DoH server list. Additionally, look for `CONNECT` proxy requests or TLS SNI values matching DoH provider hostnames. Correlate with process context to identify which application initiated the connection.
+
+    **Reference:** [Detecting DNS over HTTPS](https://mthcht.medium.com/detecting-dns-over-https-30fddb55ac78)
+  </Accordion>
+
+  <Accordion title="Suspicious TLDs" icon="at-sign">
+    **What it detects:** Certain top-level domains are disproportionately associated with malicious infrastructure due to low registration costs, permissive policies, or abuse patterns. Monitoring outbound DNS queries for these TLDs surfaces phishing, C2, and malware staging activity.
+
+    **List to use:** [`suspicious_TLDs`](https://github.com/mthcht/awesome-lists/tree/main/Lists/TLDs) (updated automatically)
+
+    The TLD list is maintained and updated automatically. It covers TLDs with documented patterns of abuse across malware campaigns and threat actor infrastructure. Use it as a DNS blocklist supplement or as a hunting source.
+
+    **Query approach:** Parse the domain suffix from DNS query logs and match against the TLD list. Filter to internal resolvers and end-user workstations, excluding known-legitimate services that may use uncommon TLDs.
+
+    **Reference:** [Threat Hunting Suspicious TLDs](https://mthcht.medium.com/threat-hunting-suspicious-tlds-a742c2adbf58)
+  </Accordion>
+
+  <Accordion title="HijackLibs / DLL hijacking" icon="puzzle-piece">
+    **What it detects:** DLL hijacking allows attackers to execute malicious code by placing a crafted DLL in a location that a legitimate application searches before finding the real DLL. HijackLibs documents known vulnerable application/DLL combinations.
+
+    **List to use:** [`hijacklibs_list.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/Hijacklibs/hijacklibs_list.csv) (updated automatically)
+
+    The list is synchronized with the [HijackLibs](https://hijacklibs.net/) project and contains the application name, vulnerable DLL name, and the expected (legitimate) path. Use it to detect DLL loads from unexpected directories.
+
+    **Query approach:** Using Sysmon Event 7 (image loaded), join the loaded DLL name and path against the HijackLibs list. Flag any load where the DLL name matches a known-vulnerable entry but the load path differs from the expected legitimate path.
+
+    **Reference:** [Detect DLL Hijacking Techniques from HijackLibs with Splunk](https://mthcht.medium.com/detect-dll-hijacking-techniques-from-hijacklibs-with-splunk-c760d2e0656f)
+  </Accordion>
+
+  <Accordion title="Phishing & DNSTWIST" icon="fish">
+    **What it detects:** Phishing infrastructure often uses domains that closely resemble legitimate brand names (typosquatting, homoglyphs, subdomain abuse). DNSTWIST generates permutations of target domains and identifies which ones are registered and potentially malicious.
+
+    **Lists to use:**
+    - [Phishing domains and URLs](https://github.com/mthcht/awesome-lists/tree/main/Lists/Phishing)
+    - [DNSTWIST default domains and script](https://github.com/mthcht/awesome-lists/tree/main/Lists/Phishing/DNSTWIST) (updated automatically)
+
+    The DNSTWIST lists are generated automatically for common enterprise brand names and updated regularly. They provide a ready-made blocklist of look-alike domains that can be loaded into DNS, proxy, or email filtering.
+
+    **Query approach:** Match outbound DNS queries and HTTP/S destinations against the phishing domain lists. For email, check links in inbound messages against the list. The DNSTWIST script can be run locally to generate permutations for your own domain and monitor for new registrations.
+
+    **Reference:** [Detecting Phishing Attempts with DNSTWIST](https://detect.fyi/detecting-phishing-attempts-with-dnstwist-37c426b3bbb8)
+  </Accordion>
+
+  <Accordion title="Browser extension detection" icon="puzzle">
+    **What it detects:** Malicious browser extensions can steal credentials, intercept traffic, and establish persistence. Detecting unauthorized extension installations—particularly those installed outside the official browser store or via policy bypass—is a meaningful hunting surface.
+
+    **List to use:** [Browser Extensions](https://github.com/mthcht/awesome-lists/tree/main/Lists/Browser%20Extensions)
+
+    The browser extensions list covers known-malicious and high-risk extension IDs. Extensions can be detected through endpoint telemetry (file system paths where extensions are stored), browser logs, or EDR process telemetry showing extension installation activity.
+
+    **Query approach:** On Windows, extension files are stored under `AppData\Local\Google\Chrome\User Data\Default\Extensions\`. Monitor for new directories created under this path and match extension IDs against the known-bad list. Browser management logs and Chrome Enterprise reporting can also be ingested for broader coverage.
+
+    **Reference:** [Detecting Browser Extension Installations](https://mthcht.medium.com/detecting-browser-extensions-installations-e0ac2b45c46b)
+  </Accordion>
+
+  <Accordion title="C2 hiding in plain sight" icon="eye-slash">
+    **What it detects:** Command-and-control frameworks increasingly use legitimate cloud services, CDNs, and SaaS platforms as redirectors to blend their traffic with normal business communication. This technique—sometimes called "living off trusted sites"—makes C2 traffic harder to block without disrupting legitimate services.
+
+    **Related list:** [LOTS project](https://lots-project.com/) and the [detection keywords](https://github.com/mthcht/ThreatHunting-Keywords) covering C2 frameworks that support domain fronting and cloud redirectors.
+
+    **Query approach:** Rather than blocking cloud services outright, focus on behavioral indicators: unusual beaconing intervals (regular check-ins at fixed periods), anomalously large uploads to cloud storage from servers, or endpoint processes that do not normally generate outbound HTTPS traffic connecting to cloud APIs. Correlate process name, parent process, and network destination.
+
+    **Reference:** [C2 Hiding in Plain Sight](https://mthcht.medium.com/c2-hiding-in-plain-sight-7a83963b9344)
+  </Accordion>
+
+  <Accordion title="HTML smuggling" icon="file-code">
+    **What it detects:** HTML smuggling is a technique for delivering malware through the browser by encoding a malicious payload inside an HTML file. The payload is reassembled client-side using JavaScript Blob objects and downloaded automatically, bypassing perimeter email and web content filters.
+
+    **Related keywords:** The `offensive_tool_keyword.csv` and `greyware_tool_keyword.csv` files include patterns associated with HTML smuggling toolkits and the artifacts they leave behind.
+
+    **Query approach:** Hunt for JavaScript `Blob` and `createObjectURL` patterns in downloaded HTML files (via proxy logs or endpoint file-write telemetry). Look for HTML files written to the `Downloads` folder that immediately spawn a child process. Monitor for `mshta.exe` or `wscript.exe` children of browser processes.
+
+    **Reference:** [Detecting HTML Smuggling Phishing Attempts](https://mthcht.medium.com/detecting-html-smuggling-phishing-attempts-15af824e60e4)
+  </Accordion>
+
+  <Accordion title="PSEXEC & similar tools" icon="terminal">
+    **What it detects:** PsExec and similar lateral movement tools (PAExec, RemCom, SMBExec) leave distinctive artifacts: service creation events on the target, named pipe activity, and characteristic network patterns over SMB. Hunting these artifacts identifies unauthorized lateral movement.
+
+    **List to use:** The `offensive_tool_keyword.csv` includes keyword patterns for PsExec, PAExec, RemCom, and similar tools across process names, service names, file paths, and named pipes.
+
+    **Query approach:** Combine multiple signals for higher confidence:
+    1. Windows Event 7045 on the target host showing a service name matching known PsExec service name patterns (e.g., `PSEXESVC`)
+    2. SMB connections from the source host to the target in the same time window
+    3. A process running from `%SystemRoot%\PSEXESVC.exe` or a temp path on the target
+
+    **Reference:** [Detecting PSEXEC and Similar Tools](https://mthcht.medium.com/detecting-psexec-and-similar-tools-c812bf3dca6c)
+  </Accordion>
+
+  <Accordion title="Time slipping (event log manipulation)" icon="clock">
+    **What it detects:** Time slipping is a technique where an attacker changes the system clock before performing malicious actions, then restores it afterward. This causes event log entries to appear at incorrect timestamps, complicating forensic timelines and potentially evading time-based detection rules.
+
+    **Detection approach:** Time slipping leaves detectable traces:
+    - Windows Event 4616 (system time changed) immediately before or after suspicious activity
+    - A burst of events with identical or closely spaced timestamps (clock moved forward and back)
+    - Gaps in event log continuity that correspond to the period when the clock was altered
+    - Windows Event 1 (Sysmon) showing process creation timestamps that do not align with parent process timing
+
+    **Query approach:** Alert on Event 4616 outside of expected maintenance windows. Correlate with other suspicious events in the same session (logon events, service creation, process creation) to identify whether time changes accompany malicious activity.
+
+    **Reference:** [Event Log Manipulations: Time Slipping](https://mthcht.medium.com/event-log-manipulations-1-time-slipping-55bf95631c40)
+  </Accordion>
+
+  <Accordion title="Suspicious named pipes" icon="pipe-section">
+    **What it detects:** Named pipes are used for inter-process communication on Windows. Post-exploitation frameworks (Cobalt Strike, Metasploit, Sliver) use named pipes for local communication between injected components and their agents. Known offensive tool pipe names are a reliable indicator of active post-exploitation.
+
+    **List to use:** [`suspicious_named_pipe_list.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_named_pipe_list.csv)
+
+    The list contains named pipe names associated with known C2 frameworks, offensive tools, and red team utilities. Each entry includes the tool name and the pipe name pattern.
+
+    **Query approach:** Use Sysmon Event 17 (pipe created) and Event 18 (pipe connected) to capture named pipe activity. Match the pipe name against the lookup list. Additionally, look for pipe names with high entropy or patterns that match known framework defaults (e.g., Cobalt Strike default pipe names).
+
+    ```spl Splunk example
+    index=endpoint sourcetype=sysmon (EventCode=17 OR EventCode=18)
+    | eval pipe_name=lower(PipeName)
+    | lookup suspicious_named_pipe_list.csv pipe_name AS pipe_name OUTPUT tool, category
+    | where isnotnull(tool)
+    | table _time, host, user, pipe_name, tool, category
+    ```
+
+    **Reference:** [Threat Hunting Suspicious Named Pipes](https://detect.fyi/threat-hunting-suspicious-named-pipes-a4206e8a4bc8)
+  </Accordion>
+
+</AccordionGroup>
+
+<Note>
+  For each technique, the referenced blog posts contain platform-specific queries (Splunk SPL, KQL, Elastic EQL) with detailed explanations of the detection logic. The queries are tested against real attack telemetry and can be adapted to your environment.
+</Note>

@@ -1,0 +1,204 @@
+---
+title: "AD / EntraID / AWS Permissions"
+description: "Important roles and groups in Active Directory, Entra ID (Azure AD), and AWS for privilege monitoring"
+---
+
+Privileged roles and groups are the crown jewels of any identity infrastructure. Unauthorized additions to these groups—whether by an insider threat, a compromised credential, or a post-exploitation step—represent one of the highest-severity events in an environment. Monitoring membership changes to these groups provides a durable, difficult-to-bypass detection control because privilege escalation almost always requires touching them.
+
+The `Lists/permissions/` directory contains curated lists for three identity planes:
+
+```
+Lists/permissions/
+├── AD/                  # Active Directory sensitive groups
+├── EntraID/             # Entra ID (Azure AD) privileged roles
+├── AWS/                 # AWS IAM privileged policies and roles
+└── Microsoft Graph/     # Microsoft Graph API permission scopes
+```
+
+## Active Directory
+
+**File:** `Lists/permissions/AD/windows_sensitives_ad_groups_list.csv`
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/permissions/AD/windows_sensitives_ad_groups_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `dest_group` | Group name (includes multilingual variants: English, French, Spanish, German) |
+| `dest_group_sid` | Well-known SID for the group (e.g. `S-1-5-32-548`) |
+| `metadata_comment` | Risk description and exploitation context |
+
+The list covers groups across multiple languages since Domain Controller locale affects the displayed group names in event logs.
+
+### High-Value Groups to Monitor
+
+| Group | SID | Risk |
+|-------|-----|------|
+| Domain Admins | `S-1-5-21-*-512` | Full domain control |
+| Enterprise Admins | `S-1-5-21-*-519` | Forest-wide administrative access |
+| Schema Admins | `S-1-5-21-*-518` | Can modify the AD schema |
+| Administrators | `S-1-5-32-544` | Full administrative control over the domain |
+| Account Operators | `S-1-5-32-548` | Can create/manage non-admin accounts; exploited for lateral movement |
+| Backup Operators | `S-1-5-32-551` | Can bypass file permissions and log on locally to DCs |
+| ESX Admins / ESXi Admins | — | Full VMware ESXi hypervisor control; actively exploited by ransomware groups |
+
+### Detection: Windows Security Events
+
+Monitor these event IDs for group membership changes:
+
+| Event ID | Description |
+|----------|-------------|
+| 4728 | Member added to a security-enabled global group |
+| 4732 | Member added to a security-enabled local group |
+| 4756 | Member added to a security-enabled universal group |
+| 4727 | Security-enabled global group was created |
+| 4731 | Security-enabled local group was created |
+| 4737 | Security-enabled global group was changed |
+| 4754 | Security-enabled universal group was created |
+| 4755 | Security-enabled universal group was changed |
+
+### Splunk — AD Group Monitoring
+
+<Tabs>
+  <Tab title="By SID (preferred)">
+    ```spl
+    `wineventlog`
+      signature_id IN (4727,4728,4731,4732,4737,4744,4749,4754,4755,4756,4759,4783,4790)
+      [| inputlookup windows_sensitives_ad_groups_list.csv | table dest_group_sid]
+    ```
+  </Tab>
+  <Tab title="By group name">
+    ```spl
+    `wineventlog`
+      signature_id IN (4727,4728,4731,4732,4737,4744,4749,4754,4755,4756,4759,4783,4790)
+      [| inputlookup windows_sensitives_ad_groups_list.csv | table dest_group]
+    ```
+  </Tab>
+  <Tab title="Combined (name or SID)">
+    ```spl
+    `wineventlog`
+      signature_id IN (4727,4728,4731,4732,4737,4744,4749,4754,4755,4756,4759,4783,4790)
+      [| inputlookup windows_sensitives_ad_groups_list.csv | table dest_group]
+      OR
+      [| inputlookup windows_sensitives_ad_groups_list.csv | table dest_group_sid]
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Matching by SID is preferred because group names vary by the language selected during Domain Controller installation. The list includes English, French, Spanish, and German group name variants to cover common multilingual deployments.
+</Note>
+
+---
+
+## Entra ID (Azure AD)
+
+**File:** `Lists/permissions/EntraID/entraid_roles_list.csv`
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/permissions/EntraID/entraid_roles_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `role` | Role display name |
+| `id` | Role template GUID |
+| `metadata_is_privileged` | `true` if the role grants significant elevated access |
+| `metadata_description` | What the role permits |
+
+### High-Value Roles to Monitor
+
+| Role | Description |
+|------|-------------|
+| Global Administrator | Unrestricted access to all Entra ID features and Microsoft 365 services |
+| Privileged Role Administrator | Can assign any Entra ID role, including Global Administrator |
+| Application Administrator | Full control over app registrations and enterprise applications |
+| Authentication Administrator | Can reset authentication methods for non-admin users |
+| Cloud Application Administrator | Same as Application Administrator, excluding App Proxy |
+| Conditional Access Administrator | Can create and modify Conditional Access policies |
+
+### Detection: Entra ID Audit Logs
+
+Role assignment events appear in Entra ID audit logs with:
+
+```
+category="RoleManagement"
+activityDisplayName="Add member to role"
+operationType="Assign"
+```
+
+Key fields to extract:
+- `initiatedBy.user.userPrincipalName` — who performed the assignment
+- `initiatedBy.user.ipAddress` — source IP of the assignment
+- `targetResources[].userPrincipalName` — who received the role
+- `targetResources[].modifiedProperties[Role.DisplayName].newValue` — which role was assigned
+- `targetResources[].modifiedProperties[Role.TemplateId].newValue` — role GUID for lookup
+
+You can also query all privileged roles dynamically via Microsoft Graph:
+
+```
+GET https://graph.microsoft.com/beta/roleManagement/directory/roleDefinitions?$filter=isPrivileged eq true
+```
+
+---
+
+## AWS IAM
+
+**File:** `Lists/permissions/AWS/aws_roles_list.csv`
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/permissions/AWS/aws_roles_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `role` | IAM policy or role name |
+| `arn` | Amazon Resource Name (ARN) for the policy |
+| `metadata_is_privileged` | `true` if the policy grants broad or sensitive access |
+| `metadata_comment` | Description of what the policy permits |
+
+### High-Value Policies to Monitor
+
+| Policy | ARN | Risk |
+|--------|-----|------|
+| IAMFullAccess | `arn:aws:iam::aws:policy/IAMFullAccess` | Full IAM control — can create or escalate any role |
+| AmazonEC2FullAccess | `arn:aws:iam::aws:policy/AmazonEC2FullAccess` | Full EC2 control — can spin up crypto mining instances |
+| AmazonEC2ContainerRegistryFullAccess | `arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess` | Full ECR access — can push malicious container images |
+| SecretsManagerReadWrite | `arn:aws:iam::aws:policy/SecretsManagerReadWrite` | Can read all secrets stored in Secrets Manager |
+| AdministratorAccess | `arn:aws:iam::aws:policy/AdministratorAccess` | Unrestricted access to all AWS services and resources |
+
+### Detection: AWS CloudTrail Events
+
+Monitor these CloudTrail event names for role and policy changes:
+
+| Event | Description |
+|-------|-------------|
+| `AttachRolePolicy` | A managed policy was attached to a role |
+| `CreateRole` | A new IAM role was created |
+| `PutRolePolicy` | An inline policy was added to a role |
+| `AddRoleToInstanceProfile` | A role was added to an EC2 instance profile |
+| `UpdateAssumeRolePolicy` | The trust policy for a role was changed |
+
+Key fields in Splunk:
+- `userIdentity.arn` — the principal that performed the action
+- `requestParameters.policyArn` — the policy that was attached
+- `requestParameters.roleName` — the role that was modified
+
+---
+
+## Microsoft App IDs — BEC Detection
+
+**File:** `Lists/microsoft_apps_list.csv`
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/microsoft_apps_list.csv`
+
+Microsoft's ecosystem includes hundreds of first-party application IDs that appear in Entra ID sign-in logs and OAuth consent grants. Business Email Compromise (BEC) attacks frequently abuse OAuth application grants to maintain persistent access to mailboxes without requiring a password. Monitoring for unusual Microsoft App IDs in OAuth grants—especially those with `Mail.Read`, `Mail.Send`, or `Contacts.Read` permissions—is a key BEC detection control.
+
+<Warning>
+  Authorized administrators legitimately modify privileged groups and assign roles as part of routine operations. Always correlate detections with change management records, the source IP, the time of day, and the initiating account's baseline behavior before escalating.
+</Warning>

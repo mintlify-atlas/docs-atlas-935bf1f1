@@ -1,0 +1,108 @@
+---
+title: "Suspicious Named Pipes"
+description: "Named pipe names associated with Cobalt Strike, Metasploit, and other offensive frameworks"
+---
+
+Named pipes are an inter-process communication (IPC) mechanism built into Windows. A process creates a named pipe as a server endpoint, and other processes connect to it as clients to exchange data. C2 frameworks exploit this by using named pipes for **SMB-based lateral movement and beaconing**: a Cobalt Strike SMB beacon, for example, communicates entirely over a named pipe rather than an outbound TCP connection, making it invisible to network-layer controls.
+
+<Info>
+  This list is discussed in depth in the threat hunting guide: [Threat Hunting Suspicious Named Pipes](https://detect.fyi/threat-hunting-suspicious-named-pipes-a4206e8a4bc8).
+</Info>
+
+## Why named pipes reveal offensive tool usage
+
+Offensive frameworks ship with **default pipe names** baked into their configuration or source code. Operators who do not customize these defaults expose themselves: a Cobalt Strike beacon using `\msagent_*` or Metasploit using `\meterpreter` can be detected purely by the pipe name without needing to inspect traffic content or decrypt C2 communications. This list captures those default and campaign-specific pipe names across frameworks including:
+
+- **Cobalt Strike** (multiple default and malleable C2 profile pipe names)
+- **Metasploit / Meterpreter**
+- **Brute Ratel C4**
+- **Sliver**
+- **PoshC2**
+- **Custom implants and malware droppers** (e.g. Gh0stGambit, Gootloader)
+- **Privilege escalation tools** (e.g. PrintSpoofer, RustPotato, GodPotato variants)
+
+## CSV structure
+
+Download: [`suspicious_named_pipe_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_named_pipe_list.csv)
+
+| Column | Description |
+|---|---|
+| `pipe_name` | Named pipe path or pattern (e.g. `\RustPotato*`, `\mojo.5688.8052.*`) |
+| `metadata_description` | Description of the tool or technique using this pipe |
+| `metadata_tool` | Tool or malware family name |
+| `metadata_category` | Category: `Malware`, `Privilege Escalation`, `C2`, etc. |
+| `metadata_link` | Reference link for the tool or report |
+| `metadata_priority` | Detection priority: `critical`, `high`, `medium`, `low` |
+| `metadata_fp_risk` | False-positive risk rating: `none`, `low`, `medium`, `high` |
+| `metadata_severity` | Severity rating: `critical`, `high`, `medium`, `low` |
+| `metadata_tool_type` | Classification: `offensive_tool`, `greyware_tool` |
+| `metadata_usage` | Intended detection use: `detection rule`, `Hunting` |
+| `metadata_comment` | Additional analyst notes |
+| `metadata_reference` | Supporting source URL(s) |
+| `metadata_regex_cortex` | Regex pattern suitable for Cortex XDR rules |
+
+## Detection approach
+
+**Sysmon Event ID 17** (pipe created) and **Event ID 18** (pipe connected) provide the telemetry needed to match named pipe activity. These events require Sysmon to be deployed with pipe monitoring enabled.
+
+### Sysmon configuration — enable pipe events
+
+```xml
+<PipeEvent onmatch="include">
+  <PipeName condition="contains">pipe</PipeName>
+</PipeEvent>
+```
+
+<Note>
+  Use an `onmatch="exclude"` filter to suppress known-good pipe names (e.g. `\srvsvc`, `\wkssvc`, `\lsass`) before forwarding to your SIEM to reduce volume.
+</Note>
+
+### Splunk — detect suspicious pipe creation (Sysmon Event 17)
+
+```text
+index=wineventlog source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=17
+| rename PipeName AS pipe_name
+| lookup suspicious_named_pipe_list.csv pipe_name AS pipe_name
+    OUTPUT metadata_tool, metadata_severity, metadata_description
+| where isnotnull(metadata_tool)
+| table _time, host, Image, pipe_name, metadata_tool, metadata_severity, metadata_description
+| sort -metadata_severity, _time
+```
+
+### Splunk — wildcard pipe name matching
+
+Because many pipe names use wildcards (e.g. `\RustPotato*`), configure your lookup with wildcard matching:
+
+```text
+[suspicious_named_pipe_list]
+filename = suspicious_named_pipe_list.csv
+match_type = WILDCARD(pipe_name)
+case_sensitive_match = false
+```
+
+### Splunk — detect Cobalt Strike SMB beacon pipe connection (Event 18)
+
+```text
+index=wineventlog source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=18
+| rename PipeName AS pipe_name
+| lookup suspicious_named_pipe_list.csv pipe_name AS pipe_name
+    OUTPUT metadata_tool, metadata_category, metadata_severity
+| where isnotnull(metadata_tool) AND metadata_category="C2"
+| table _time, host, Image, User, pipe_name, metadata_tool, metadata_severity
+```
+
+## Detection tiers
+
+<CardGroup cols={2}>
+  <Card title="Detection rule" icon="shield">
+    Entries with `metadata_usage = detection rule` have low false-positive risk and can be used as high-confidence alerts.
+  </Card>
+  <Card title="Hunting" icon="search">
+    Entries with `metadata_usage = Hunting` may appear in legitimate software. Use as leads for analyst review rather than automated alerts.
+  </Card>
+</CardGroup>
+
+## Related lists
+
+- [`suspicious_windows_services_names_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_services_names_list.csv) — Services registered alongside pipe-based implants
+- [`suspicious_mutex_names_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_mutex_names_list.csv) — Mutex names used by the same malware families

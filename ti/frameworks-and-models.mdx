@@ -1,0 +1,131 @@
+---
+title: "TTP Frameworks & Models"
+description: "Threat modeling frameworks, attack taxonomies, and adversary tracking resources"
+---
+
+Structured frameworks for describing, categorizing, and tracking adversary behavior. These models underpin detection engineering, threat modeling, and adversary emulation workflows.
+
+## MITRE ATT&CK
+
+The industry-standard knowledge base of adversary tactics, techniques, and procedures (TTPs), maintained by MITRE.
+
+<CardGroup cols={2}>
+  <Card title="Techniques" icon="list-check" href="https://attack.mitre.org/techniques/enterprise/">
+    Full catalog of enterprise ATT&CK techniques with detection and mitigation guidance.
+  </Card>
+  <Card title="Tactics" icon="bullseye" href="https://attack.mitre.org/tactics/enterprise/">
+    The 14 adversary tactical goals that organize techniques in the ATT&CK matrix.
+  </Card>
+  <Card title="Mitigations" icon="shield" href="https://attack.mitre.org/mitigations/enterprise/">
+    Defensive configurations and controls mapped to ATT&CK techniques.
+  </Card>
+  <Card title="ATT&CK Navigator" icon="map" href="https://mitre-attack.github.io/attack-navigator/">
+    Interactive matrix for visualizing technique coverage, heat maps, and layer comparisons.
+  </Card>
+  <Card title="Software / Threat Actor Tools" icon="toolbox" href="https://attack.mitre.org/software/">
+    Tools and software used by threat actor groups, mapped to techniques.
+  </Card>
+  <Card title="Data Sources" icon="database" href="https://attack.mitre.org/datasources/">
+    Telemetry sources required to detect specific ATT&CK techniques.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Download all MITRE ATT&CK data in XLSX format from [attack.mitre.org/resources/attack-data-and-tools](https://attack.mitre.org/resources/attack-data-and-tools/) for offline analysis, pivot tables, or SIEM rule development.
+</Tip>
+
+## MITRE extensions
+
+<AccordionGroup>
+  <Accordion title="CAPEC — Common Attack Pattern Enumeration and Classification">
+    [MITRE CAPEC](https://capec.mitre.org/) catalogs common attack patterns used by adversaries at a more abstract level than ATT&CK techniques. Useful for threat modeling during system design.
+  </Accordion>
+
+  <Accordion title="CAR — Cyber Analytics Repository">
+    [MITRE CAR](https://car.mitre.org/) provides analytics (pseudocode detections) mapped to ATT&CK techniques, along with data model definitions and coverage metrics.
+  </Accordion>
+
+  <Accordion title="PRE-ATT&CK">
+    [PRE-ATT&CK Techniques](https://attack.mitre.org/versions/v7/techniques/pre/) covers adversary reconnaissance and resource development activities that occur before initial access.
+  </Accordion>
+
+  <Accordion title="D3FEND — Detection and Countermeasure Framework">
+    [MITRE D3FEND](https://d3fend.mitre.org/) is a knowledge graph of cybersecurity countermeasures, complementing ATT&CK by mapping defensive techniques to the offensive techniques they counter.
+  </Accordion>
+
+  <Accordion title="DeTTECT">
+    [DeTTECT](https://github.com/rabobank-cdc/DeTTECT) is an open-source tool for mapping your data sources and detections to ATT&CK, enabling gap analysis and detection coverage scoring.
+  </Accordion>
+</AccordionGroup>
+
+## Kill chains and adversary models
+
+<CardGroup cols={2}>
+  <Card title="Cyber Kill Chain" icon="link" href="https://www.lockheedmartin.com/en-us/capabilities/cyber/cyber-kill-chain.html">
+    Lockheed Martin's seven-stage model describing the phases of a targeted intrusion, from reconnaissance to actions on objectives.
+  </Card>
+  <Card title="Unified Kill Chain" icon="arrows-split-up-and-left" href="https://www.unifiedkillchain.com/assets/The-Unified-Kill-Chain.pdf">
+    An extended kill chain model that merges elements from ATT&CK and the Cyber Kill Chain into 18 phases, covering both in-network and cross-network attack paths.
+  </Card>
+  <Card title="Pyramid of Pain" icon="triangle-exclamation" href="https://detect-respond.blogspot.com/2013/03/the-pyramid-of-pain.html">
+    A model by David Bianco ranking indicators by how much pain they cause adversaries when denied — from hash values (trivial) up to TTPs (tough).
+  </Card>
+  <Card title="TTP Pyramid" icon="layer-group" href="https://scythe.io/library/summiting-the-pyramid-of-pain-the-ttp-pyramid">
+    An extension of the Pyramid of Pain that further decomposes TTPs into sub-levels, providing finer-grained guidance on detection quality and adversary cost.
+  </Card>
+</CardGroup>
+
+## Threat group tracking
+
+<AccordionGroup>
+  <Accordion title="APTmap">
+    [APTmap](https://github.com/andreacristaldi/APTmap) is an interactive visualization of APT group origins, targets, and relationships, useful for geopolitical threat context.
+  </Accordion>
+
+  <Accordion title="Group naming conventions matrix">
+    The [Groups & Operations Naming Conventions Matrix](https://docs.google.com/spreadsheets/d/1H9_xaxQHpWaa4O_Son4Gx0YOIzlcBWMsdvePFX68EKU) maps threat group names across vendor naming conventions (e.g., Fancy Bear = APT28 = STRONTIUM). Also lists tools associated with tracked groups.
+  </Accordion>
+
+  <Accordion title="Ransomware Tool Matrix (BushidoToken)">
+    [Ransomware-Tool-Matrix](https://github.com/BushidoUK/Ransomware-Tool-Matrix) by BushidoToken tracks the offensive tools observed in use by ransomware groups, enabling detection prioritization based on group tooling.
+  </Accordion>
+
+  <Accordion title="Russian APT Tool Matrix (BushidoToken)">
+    [Russian-APT-Tool-Matrix](https://github.com/BushidoUK/Russian-APT-Tool-Matrix) documents tools and techniques associated with Russian state-sponsored threat actors.
+  </Accordion>
+
+  <Accordion title="MITRE ATT&CK group pages">
+    [Tools used by threat actor groups on MITRE ATT&CK](https://attack.mitre.org/software/) provides technique-level detail on tools and their associated threat actors, sourced from public reporting.
+  </Accordion>
+</AccordionGroup>
+
+## CVE and vulnerability frameworks
+
+<AccordionGroup>
+  <Accordion title="MITRE CVE Database">
+    [CVE Vulnerability Database](https://cve.mitre.org/) is the authoritative registry of publicly disclosed vulnerabilities, maintained by MITRE. Each CVE entry provides a standardized identifier, description, and references.
+  </Accordion>
+
+  <Accordion title="SSVC — Stakeholder-Specific Vulnerability Categorization">
+    [SSVC (CERTCC)](https://github.com/CERTCC/SSVC) provides a decision-tree framework for prioritizing vulnerability response based on exploitation status, technical impact, and mission impact — an alternative to CVSS score-based prioritization.
+  </Accordion>
+</AccordionGroup>
+
+## REACT framework
+
+[REACT](https://atc-project.github.io/react-navigator/) is a Response Action framework that maps defensive response actions to ATT&CK techniques, enabling structured incident response playbook development aligned to the adversary's technique.
+
+## All threat intelligence reports
+
+<Card title="ThreatIntel-Reports" icon="file-lines" href="https://github.com/mthcht/ThreatIntel-Reports">
+  A consolidated repository of threat intelligence reports from across the security industry.
+</Card>
+
+<Card title="ThreatIntel-Reports search interface" icon="magnifying-glass" href="https://mthcht.github.io/ThreatIntel-Reports/">
+  Search across all aggregated TI reports by threat actor, malware family, technique, or keyword.
+</Card>
+
+## Adversary emulation
+
+- [atomic-red-team](https://github.com/redcanaryco/atomic-red-team) — Atomic tests mapped to ATT&CK techniques for validating detection coverage
+- [Red Canary Threat Detection Report](https://redcanary.com/threat-detection-report/) — Annual analysis of the most prevalent ATT&CK techniques observed across Red Canary's customer base

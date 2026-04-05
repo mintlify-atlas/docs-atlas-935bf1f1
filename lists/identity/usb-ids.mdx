@@ -1,0 +1,97 @@
+---
+title: "Suspicious USB IDs"
+description: "USB vendor and product IDs associated with hardware attack tools (Rubber Ducky, Bash Bunny, etc.)"
+---
+
+Every USB device exposes a Vendor ID (VID) and Product ID (PID) to the host operating system at connection time. These values are assigned by the USB Implementers Forum (USB-IF) and are logged by Windows in Security Event ID 6416 (A new external device was recognized by the system).
+
+Hardware attack tools—HID emulators, rogue storage devices, network implants, and software-defined radios—all have known VID/PID combinations. Monitoring for these identifiers provides a reliable, low-cost control against physical access attacks.
+
+## List: suspicious\_usb\_ids\_list.csv
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_usb_ids_list.csv`
+
+**Raw CSV:**
+`https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_usb_ids_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `device_id` | Full hardware device ID string as it appears in Windows logs (supports wildcards) |
+| `vendor_id` | USB Vendor ID (hex, e.g. `F000`) |
+| `product_id` | USB Product ID (hex, e.g. `FF01`) |
+| `metadata_product` | Human-readable product name |
+| `metadata_description` | What the device does or why it is suspicious |
+| `metadata_severity` | `critical`, `high`, `medium`, or `low` |
+| `metadata_link` | Reference URL for the device |
+| `metadata_comment` | Analyst notes, including false positive guidance |
+| `metadata_device_friendly_name` | Windows friendly name as it appears in Device Manager or Event 6416 |
+
+### Known Attack Devices
+
+<CardGroup cols={2}>
+  <Card title="Hak5 Rubber Ducky" icon="keyboard">
+    VID: `03EB` / PID: `2401` — Keystroke injection tool that emulates a USB keyboard. Delivers payloads in seconds.
+  </Card>
+  <Card title="Hak5 Bash Bunny" icon="terminal">
+    Multi-function attack platform supporting HID, Ethernet, and storage attack modes.
+  </Card>
+  <Card title="Hak5 Screen Crab" icon="video">
+    VID: `18D1` / PID: `4EE7` — Stealthy HDMI video man-in-the-middle implant. Severity: critical.
+  </Card>
+  <Card title="HackRF One" icon="radio">
+    VID: `1D50` / PID: `6089` — Software-defined radio capable of transmitting and receiving across a wide frequency range.
+  </Card>
+  <Card title="O.MG Cable" icon="plug">
+    Appears as a standard USB cable but contains a Wi-Fi-connected implant capable of executing payloads remotely.
+  </Card>
+  <Card title="Flipper Zero" icon="gamepad">
+    Multi-protocol tool supporting sub-GHz radio, NFC, infrared, RFID, and HID emulation.
+  </Card>
+  <Card title="Hak5 Key Croc" icon="key">
+    VID: `F000` / PID: `FF01` — USB adapter keylogger that also supports HID injection.
+  </Card>
+</CardGroup>
+
+## Detection
+
+### Windows Event ID 6416
+
+Event ID 6416 (*A new external device was recognized by the system*) is logged in the Security event log when Windows enumerates a newly connected USB device. It contains:
+
+- `DeviceDescription` — the friendly name
+- `DeviceInstanceID` — the full hardware ID string, including VID and PID
+
+<Steps>
+  <Step title="Enable auditing">
+    Enable "Audit PNP Activity" under Computer Configuration → Windows Settings → Security Settings → Advanced Audit Policy Configuration → Detailed Tracking.
+  </Step>
+  <Step title="Load the lookup">
+    Import `suspicious_usb_ids_list.csv` as a lookup table in your SIEM (Splunk, Elastic, Sentinel, etc.).
+  </Step>
+  <Step title="Alert on match">
+    Join Event ID 6416 `DeviceInstanceID` against the `device_id` column using wildcard matching.
+  </Step>
+</Steps>
+
+### Splunk Query
+
+```spl
+`wineventlog_security` EventCode=6416
+| rex field=Message "Device Instance Path:\s+(?P<device_instance_id>[^\r\n]+)"
+| lookup suspicious_usb_ids_list device_id AS device_instance_id OUTPUT metadata_product, metadata_severity, metadata_description
+| where isnotnull(metadata_product)
+| table _time, host, device_instance_id, metadata_product, metadata_severity, metadata_description
+```
+
+### OUI / VID Lookup Resources
+
+- [DeviceHunt USB/PCI Database](https://devicehunt.com) — look up any VID/PID to identify a device manufacturer and product
+- [USB-IF Vendor ID Registry](https://www.usb.org/developers) — official USB Implementers Forum vendor registry
+- [The USB ID Repository](https://usb-ids.gowdy.us) — community-maintained VID/PID database
+
+<Note>
+  False positives are possible. Some VID/PID combinations are shared across legitimate and attack-mode firmware. The `metadata_comment` column in the list includes analyst notes on known false positive scenarios for each entry, such as friendly name validation for Event ID 6416.
+</Note>

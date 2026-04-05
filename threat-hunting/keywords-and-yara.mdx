@@ -1,0 +1,125 @@
+---
+title: "Keywords & YARA Rules"
+description: "Offensive and greyware tool detection keywords and YARA rules for threat hunting"
+---
+
+The [ThreatHunting-Keywords](https://github.com/mthcht/ThreatHunting-Keywords) project is the core of the detection keyword collection. It contains three CSV files covering different categories of tools and signatures, plus a companion YARA rule repository generated from those same keywords.
+
+## Keyword files
+
+Each CSV file shares a consistent column schema. Rows describe a single keyword or pattern associated with a specific tool, and include the context where that keyword is meaningful—process name, command-line argument, file path, registry key, network URI, and so on.
+
+### Offensive tool keywords
+
+**File:** [`offensive_tool_keyword.csv`](https://raw.githubusercontent.com/mthcht/ThreatHunting-Keywords/main/offensive_tool_keyword.csv)
+
+This file covers tools used primarily for offensive operations: exploitation frameworks, post-exploitation agents, credential dumpers, tunneling utilities, and similar software. Keywords here warrant high-priority investigation when detected in production environments.
+
+Each row includes:
+- The tool name and category
+- The keyword or pattern to match
+- The field type where the match applies (e.g., `process_name`, `cmd_line`, `file_path`, `registry_key`, `url`)
+- Metadata such as MITRE ATT&CK technique references and confidence level
+
+### Greyware tool keywords
+
+**File:** [`greyware_tool_keyword.csv`](https://raw.githubusercontent.com/mthcht/ThreatHunting-Keywords/main/greyware_tool_keyword.csv)
+
+Greyware covers dual-use tools that are legitimate in some contexts but frequently abused by attackers: remote monitoring and management (RMM) software, remote access tools, tunneling utilities used for exfiltration, and similar programs. Detections here require additional context to determine legitimacy.
+
+<Note>
+  Matches on greyware keywords should be correlated with user context, deployment records, and network destinations before escalation. An RMM tool used by your IT team is not an incident; the same tool appearing on a server with no IT ticket is.
+</Note>
+
+### Signature keywords
+
+**File:** [`signature_keyword.csv`](https://github.com/mthcht/ThreatHunting-Keywords/blob/main/signature_keyword.csv)
+
+This file aggregates keywords derived from AV and EDR signatures across multiple engines. It is useful for mapping vendor detection names back to tool behaviors, and for hunting by signature name in telemetry that includes AV detection fields.
+
+## YARA rules
+
+**Repository:** [ThreatHunting-Keywords-yara-rules](https://github.com/mthcht/ThreatHunting-Keywords-yara-rules)
+
+YARA rules are generated directly from the keyword CSV data. Each rule targets the strings and patterns present in the keyword lists, translated into YARA syntax for file and memory scanning.
+
+Use cases:
+- Scanning disk images or memory dumps during incident response
+- Integrating with SIEM platforms that support YARA scanning (Elastic, Splunk SOAR, Velociraptor)
+- Running as a scheduled scan over file shares, endpoint telemetry exports, or malware sample archives
+
+<Info>
+  The YARA rules track the keyword CSV files. When a new tool is added to `offensive_tool_keyword.csv`, corresponding YARA rules are generated and added to the companion repository.
+</Info>
+
+## AV signatures
+
+### Microsoft Defender
+
+**Lists:** [Defender signatures](https://github.com/mthcht/awesome-lists/tree/main/Lists/AV%20signatures/Defender)  
+**YARA:** [Defender YARA rules](https://github.com/mthcht/awesome-lists/tree/main/Lists/Others/Defender_yara_rules)
+
+Microsoft Defender detection name lists organized by threat category. Use these to search your EDR or SIEM for specific Defender detection names across your fleet, or to hunt for related activity in environments where Defender telemetry is forwarded to a central platform.
+
+### ClamAV
+
+**Lists:** [ClamAV signatures](https://github.com/mthcht/awesome-lists/tree/main/Lists/AV%20signatures/ClamAV)
+
+ClamAV signature names organized for use in log searches. Useful when ClamAV scan logs are ingested into a SIEM or when correlating open-source AV detections with endpoint telemetry.
+
+## Using keywords in a SIEM query
+
+The examples below show how to load the keyword CSV as a lookup and match it against log data. The pattern is the same across platforms: load the list, join on the relevant field, and filter for matches.
+
+<CodeGroup>
+
+```spl Splunk
+| inputlookup offensive_tool_keyword.csv
+| rename keyword AS search_term
+| search field_type="process_name"
+| eval search_term=lower(search_term)
+| join type=left search_term
+    [search index=endpoint sourcetype=sysmon EventCode=1
+    | eval search_term=lower(process_name)]
+| where isnotnull(tool)
+| table _time, host, user, process_name, tool, mitre_technique
+```
+
+```esql Elastic (EQL)
+// Load lookup via Elasticsearch enrichment policy, then query:
+from logs-endpoint.events.process-*
+| where process.name : (
+    "mimikatz.exe", "meterpreter*", "cobalt*"
+  )
+| keep @timestamp, host.name, user.name, process.name, process.command_line
+```
+
+</CodeGroup>
+
+<Tip>
+  For Splunk, use `| inputlookup` to load the CSV and `| lookup` to enrich events. For Elastic, configure an enrichment policy or use a terms aggregation to match against the keyword list. The [ThreatHunting-Keywords](https://github.com/mthcht/ThreatHunting-Keywords) repository includes platform-specific query examples.
+</Tip>
+
+## Running YARA rules
+
+<CodeGroup>
+
+```bash Single file
+yara -r /path/to/ThreatHunting-Keywords-yara-rules/ suspicious_file.exe
+```
+
+```bash Directory scan
+yara -r /path/to/ThreatHunting-Keywords-yara-rules/ /mnt/evidence/
+```
+
+```bash Velociraptor (VQL)
+SELECT * FROM Artifact.Windows.Detection.Yara.Process(
+  YaraURL="https://raw.githubusercontent.com/mthcht/ThreatHunting-Keywords-yara-rules/main/rules.yar"
+)
+```
+
+</CodeGroup>
+
+<Warning>
+  Running YARA rules across live process memory on production systems has performance implications. Test rule sets in a staging environment and use process filtering to limit scope before broad deployment.
+</Warning>

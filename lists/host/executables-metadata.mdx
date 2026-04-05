@@ -1,0 +1,117 @@
+---
+title: "Executable Metadata"
+description: "PE metadata information for known executables to detect tampered or spoofed binaries"
+---
+
+Every Windows Portable Executable (PE) binary embeds a version information resource in its file headers. This metadata includes the company name, product name, file description, internal name, and version strings. Security tools and operating system components read this data at load time to present human-readable information about running processes.
+
+Attackers exploit this by either **stripping** the metadata entirely or **spoofing** it — copying legitimate values from well-known binaries (e.g. setting `Company = Microsoft Corporation` on a custom implant) to evade analyst attention and bypass tools that filter on these fields.
+
+## Why PE metadata detection matters
+
+<CardGroup cols={2}>
+  <Card title="Spoofed metadata" icon="user-x">
+    Malware copies version info from legitimate binaries to appear as `svchost.exe`, `explorer.exe`, or security products. Comparing the actual binary against an expected metadata baseline exposes the mismatch.
+  </Card>
+  <Card title="Stripped metadata" icon="file-x">
+    Compiled implants and loaders often have empty or absent version info. Legitimate system binaries always carry Microsoft-signed metadata. A missing field is itself a detection signal.
+  </Card>
+  <Card title="Wrong path" icon="folder-x">
+    A process reporting `original_file_name = svchost.exe` but running from `%APPDATA%` instead of `%SystemRoot%\System32` is almost certainly masquerading.
+  </Card>
+  <Card title="Mismatched company" icon="building-x">
+    An executable with `Company = Google LLC` running from a temp directory is unlikely to be a legitimate Google binary. Path-metadata mismatch is a reliable hunting signal.
+  </Card>
+</CardGroup>
+
+## CSV structure
+
+Download: [`executables_metadata_informations_list.csv`](https://github.com/mthcht/awesome-lists/blob/main/Lists/Windows%20Metadata/executables_metadata_informations_list.csv)
+
+<Note>
+  The raw CSV is available at: `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Windows%20Metadata/executables_metadata_informations_list.csv`
+</Note>
+
+| Column | Description |
+|---|---|
+| `process_name` | Executable filename as it appears on disk (e.g. `svchost.exe`) |
+| `original_file_name` | `OriginalFilename` field from the PE version resource |
+| `ProductName` | `ProductName` field from the PE version resource |
+| `InternalName` | `InternalName` field from the PE version resource |
+| `Company` | `CompanyName` field from the PE version resource |
+| `Description` | `FileDescription` field from the PE version resource |
+| `Publisher` | Publisher field (may differ from `Company` for signed binaries) |
+| `potential_process_path` | Expected filesystem path(s) for this binary |
+| `potential_parent_process_path` | Expected parent process path(s) for normal execution |
+| `priority` | Detection priority hint for the entry |
+| `comment` | Analyst notes on unusual behaviors or edge cases |
+
+## Detection approach
+
+The detection strategy is to **compare running process metadata against the expected baseline** in this list. Any process where observed fields do not match expected values warrants investigation.
+
+### Splunk — detect metadata mismatch (Sysmon Event 1 + lookup)
+
+```text
+index=wineventlog source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| rename Image AS process_path, OriginalFileName AS observed_original_file_name, Company AS observed_company
+| rex field=process_path "(?i)\\(?<process_name>[^\\]+)$"
+| lookup executables_metadata_informations_list.csv process_name AS process_name
+    OUTPUT original_file_name AS expected_original_file_name, Company AS expected_company, potential_process_path
+| where isnotnull(expected_original_file_name)
+    AND (
+        lower(observed_original_file_name) != lower(expected_original_file_name)
+        OR lower(observed_company) != lower(expected_company)
+    )
+| table _time, host, process_path, process_name,
+    observed_original_file_name, expected_original_file_name,
+    observed_company, expected_company
+| sort -_time
+```
+
+### Splunk — detect process running from unexpected path
+
+```text
+index=wineventlog source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| rex field=Image "(?i)\\(?<process_name>[^\\]+)$"
+| lookup executables_metadata_informations_list.csv process_name AS process_name
+    OUTPUT potential_process_path AS expected_path
+| where isnotnull(expected_path)
+    AND NOT match(Image, "(?i)" + replace(expected_path, "\\", "\\\\"))
+| table _time, host, Image, expected_path, ParentImage, User
+| sort -_time
+```
+
+### Microsoft Defender for Endpoint (KQL)
+
+```text
+DeviceProcessEvents
+| extend process_name = tolower(FileName)
+| lookup kind=inner (
+    externaldata(
+        process_name: string, original_file_name: string,
+        ProductName: string, Company: string, potential_process_path: string
+    )
+    [@"https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Windows%20Metadata/executables_metadata_informations_list.csv"]
+    with (format="csv", ignoreFirstRecord=true)
+) on process_name
+| where ProcessVersionInfoCompanyName != Company
+    or ProcessVersionInfoOriginalFileName != original_file_name
+| project Timestamp, DeviceName, FolderPath, FileName,
+    ProcessVersionInfoCompanyName, Company,
+    ProcessVersionInfoOriginalFileName, original_file_name
+```
+
+## Related lists
+
+<CardGroup cols={3}>
+  <Card title="Process lineage" icon="diagram-project" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_windows_execution_parent_child_relation_list.csv">
+    `suspicious_windows_execution_parent_child_relation_list.csv` — Expected parent-child process relationships. Pair with metadata mismatches to detect masquerading combined with abnormal spawn chains.
+  </Card>
+  <Card title="File extensions" icon="file" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/all_file_extensions_list.csv">
+    `all_file_extensions_list.csv` — Reference list of all known file extensions. Use to detect executables masquerading with uncommon or double extensions.
+  </Card>
+  <Card title="Double extensions" icon="copy" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_file_double_extension.csv">
+    `suspicious_file_double_extension.csv` — File double-extension patterns (e.g. `invoice.pdf.exe`) used in phishing and malware delivery.
+  </Card>
+</CardGroup>

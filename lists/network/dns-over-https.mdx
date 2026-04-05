@@ -1,0 +1,152 @@
+---
+title: "DNS-over-HTTPS Servers"
+description: "List of DNS-over-HTTPS (DoH) providers used to bypass traditional DNS monitoring"
+---
+
+DNS-over-HTTPS (DoH) encrypts DNS queries inside standard HTTPS traffic on port 443, making them indistinguishable from ordinary web requests to network monitoring tools that rely on inspecting plaintext DNS traffic (UDP/53). Attackers and malware leverage DoH to:
+
+- Resolve C2 infrastructure without triggering DNS-based detection rules
+- Bypass internal DNS sinkholes and RPZ (Response Policy Zone) controls
+- Exfiltrate data via DNS tunnelling to a DoH provider they control
+- Evade threat intelligence feeds that flag malicious domain resolutions
+
+<Warning>
+  Blocking or alerting on DoH endpoints is a high-fidelity signal in managed corporate environments where DoH should not be in use. In environments where DoH is sanctioned (e.g., browsers with DoH enabled by policy), tune accordingly.
+</Warning>
+
+## Lists in this category
+
+<CardGroup cols={2}>
+  <Card title="dns_over_https_servers_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/dns_over_https_servers_list.csv">
+    ~1,970 DoH provider entries — domains, IPs, ports, and URI paths
+  </Card>
+  <Card title="lolc2_abused_domains.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/lolc2_abused_domains.csv">
+    Legitimate services abused for C2 via domain fronting and trusted infra
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="Browse DoH list on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/dns_over_https_servers_list.csv">
+    Full file history
+  </Card>
+  <Card title="Browse lolc2 list on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/lolc2_abused_domains.csv">
+    Full file history
+  </Card>
+</CardGroup>
+
+## CSV structure
+
+### dns_over_https_servers_list.csv
+
+| Column | Description |
+|---|---|
+| `url` | Full DoH URL pattern (may include wildcard `*`) |
+| `dest_host` | Hostname of the DoH resolver |
+| `metadata_dest_ip` | Known IP address for the resolver |
+| `metadata_dest_port` | Port (almost always `443`) |
+| `metadata_uri_path` | URI path (typically `/dns-query`) |
+| `metadata_type` | Protocol type: `DOH`, `DOT`, or `DOQ` |
+| `metadata_comment` | Notes on provider or abuse context |
+| `metadata_link` | Source reference |
+
+**Example rows:**
+
+```csv
+url,dest_host,metadata_dest_ip,metadata_dest_port,metadata_uri_path,metadata_type,metadata_comment,metadata_link
+https://dns.cloudflare.com/dns-query*,dns.cloudflare.com,104.16.133.229,443,/dns-query,DOH,N/A,https://gist.github.com/0xHossam/...
+https://doh-2.seby.io/dns-query*,doh-2.seby.io,45.76.113.31,443,/dns-query,DOH,N/A,https://github.com/curl/curl/wiki/DNS-over-HTTPS
+```
+
+### lolc2_abused_domains.csv
+
+| Column | Description |
+|---|---|
+| `url_root_domain` | Root domain of the abused service |
+| `dest` | Wildcard destination pattern |
+| `dest_nt_domain` | NT-style domain for lookup matching |
+| `metadata_type` | Abuse technique: `domain_fronting`, `c2`, etc. |
+| `metadata_priority` | Detection priority: `high`, `medium`, `low` |
+| `metadata_comment` | Description of abuse technique and service |
+
+**Example rows:**
+
+```csv
+url_root_domain,dest,dest_nt_domain,metadata_type,metadata_priority,metadata_comment
+windows.net,*.blob.core.windows.net,*.blob.core.windows.net,domain_fronting,high,Azure Storage (object store)
+azurewebsites.net,*.azurewebsites.net,*.azurewebsites.net,domain_fronting,high,Azure App Service (webapps)
+```
+
+## Detection approach
+
+<Steps>
+  <Step title="Block or alert on DoH resolver IPs">
+    The most reliable method in environments where DoH is not permitted. Use the `metadata_dest_ip` column to build a firewall deny list or a network IDS rule set.
+  </Step>
+  <Step title="Alert on DoH hostnames in proxy/DNS logs">
+    If your proxy decrypts TLS, match the `dest_host` column against HTTP CONNECT targets or SNI values in TLS handshakes.
+  </Step>
+  <Step title="Detect URI path patterns">
+    Many DoH resolvers share the path `/dns-query`. Alert on HTTPS connections to port 443 where the URI path matches known DoH paths and the destination is not an internal resource.
+  </Step>
+  <Step title="Correlate lolc2 domains with process context">
+    Connections to legitimate cloud services in the lolc2 list are high-fidelity only when correlated with unusual processes (e.g., `powershell.exe` connecting to `*.blob.core.windows.net`).
+  </Step>
+</Steps>
+
+<Tabs>
+  <Tab title="Splunk">
+    Load the DoH list as a lookup table and alert on destination matches:
+
+    ```spl
+    index=network sourcetype=proxy OR sourcetype=firewall dest_port=443
+    | lookup dns_over_https_servers_list.csv dest_host OUTPUT metadata_type metadata_comment
+    | where isnotnull(metadata_type) AND metadata_type IN ("DOH","DOT","DOQ")
+    | stats count by src_ip dest_host metadata_comment
+    | where count > 0
+    ```
+
+    For lolc2 domain fronting detection correlated with suspicious processes:
+
+    ```spl
+    index=network sourcetype=proxy
+    | lookup lolc2_abused_domains.csv dest_nt_domain OUTPUT metadata_type metadata_priority metadata_comment
+    | where metadata_priority="high"
+    | join src_ip [
+        search index=endpoint sourcetype=sysmon EventCode=3
+        | eval src_ip=dest_ip
+        | table src_ip process_name
+      ]
+    | where NOT process_name IN ("chrome.exe","msedge.exe","firefox.exe")
+    | table _time src_ip dest_nt_domain process_name metadata_type metadata_comment
+    ```
+  </Tab>
+  <Tab title="Elastic">
+    Create an enrichment policy from the CSV index, then query:
+
+    ```text
+    destination.port: 443 and destination.domain: (dns.cloudflare.com or dns.google or doh.opendns.com)
+    ```
+
+    Or use a runtime field that checks against the full IP list:
+
+    ```json
+    GET network-*/_search
+    {
+      "query": {
+        "bool": {
+          "must": [
+            { "term": { "destination.port": 443 } },
+            { "terms": { "destination.ip": ["104.16.133.229", "8.8.8.8"] } }
+          ]
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Further reading
+
+<Card title="Detecting DNS-over-HTTPS — mthcht on Medium" icon="book-open" href="https://mthcht.medium.com/detecting-dns-over-https-30fddb55ac78">
+  In-depth walkthrough of DoH evasion techniques and Splunk detection queries using this list
+</Card>

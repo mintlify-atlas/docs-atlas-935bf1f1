@@ -1,0 +1,94 @@
+---
+title: "Threat Hunting Overview"
+description: "How to use Awesome Security Lists for proactive threat hunting"
+---
+
+Threat hunting is the practice of proactively searching through networks, endpoints, and datasets to detect adversaries that have evaded automated detection controls. The mthcht/awesome-lists project provides the raw material for this work: curated, continuously updated lists that can be loaded directly into a SIEM, EDR, or custom pipeline to surface suspicious activity at scale.
+
+## What this project provides
+
+Rather than publishing detections tied to a single platform, the project publishes the underlying data—keywords, patterns, file names, hashes, domain lists, and YARA rules—that you can adapt to any environment. The result is a detection layer built on real attacker tradecraft rather than vendor-specific signatures.
+
+Three categories of resources drive the hunting workflow:
+
+- **Detection keywords** — CSV files covering offensive tools, greyware, and AV signatures that match process names, command-line arguments, file paths, registry keys, and network indicators.
+- **YARA rules** — File-scanning rules derived directly from the keyword lists, ready to run in any YARA-compatible scanner or SIEM integration.
+- **Hunting search examples** — Published blog posts and queries for twelve specific attack patterns, from suspicious Windows services to HTML smuggling.
+
+<Info>
+  All lists in this project are regularly updated after each tool analysis published in the [ThreatHunting-Keywords](https://github.com/mthcht/ThreatHunting-Keywords) project.
+</Info>
+
+## How the detection lists enable hunting at scale
+
+Each CSV list is structured so that every row can become a SIEM lookup table entry, a regex match, or a YARA string. A single `suspicious_http_user_agents_list.csv` import gives you hundreds of known-bad or suspicious user-agent strings to match across your proxy and web server logs, without writing individual rules per string.
+
+<Steps>
+  <Step title="Choose the relevant list">
+    Identify which list covers the attack surface you want to hunt—keywords for tool behavior, user-agent lists for proxy logs, named pipe lists for endpoint telemetry, and so on.
+  </Step>
+  <Step title="Load it into your SIEM or scanner">
+    Import the CSV as a lookup table (Splunk) or enrich index (Elastic), or feed it into a YARA scanner for file-based hunting.
+  </Step>
+  <Step title="Build your detection query">
+    Join your log data against the lookup, filtering for matches. Reference the blog posts linked under each technique for tested query examples.
+  </Step>
+  <Step title="Triage and investigate">
+    Matches against these lists are indicators, not confirmed incidents. Cross-reference with context—parent process, network destination, user account—before escalating.
+  </Step>
+</Steps>
+
+## What's available
+
+<CardGroup cols={2}>
+  <Card
+    title="Keywords & YARA Rules"
+    icon="magnifying-glass"
+    href="/threat-hunting/keywords-and-yara"
+  >
+    Offensive tool keywords, greyware patterns, AV signatures, and YARA rules for file and memory scanning.
+  </Card>
+  <Card
+    title="Hunting Techniques"
+    icon="crosshairs"
+    href="/threat-hunting/hunting-techniques"
+  >
+    Twelve specific hunting techniques with query patterns for Windows services, user-agents, DNS-over-HTTPS, named pipes, and more.
+  </Card>
+  <Card
+    title="ThreatHunting Keywords project"
+    icon="github"
+    href="https://github.com/mthcht/ThreatHunting-Keywords"
+  >
+    Source repository for offensive_tool_keyword.csv, greyware_tool_keyword.csv, and signature_keyword.csv.
+  </Card>
+  <Card
+    title="ThreatHunting YARA rules"
+    icon="shield"
+    href="https://github.com/mthcht/ThreatHunting-Keywords-yara-rules"
+  >
+    YARA rules generated from the keyword lists, suitable for file scanning, memory analysis, and SIEM integrations.
+  </Card>
+  <Card
+    title="Detection lists"
+    icon="list"
+    href="https://github.com/mthcht/awesome-lists/tree/main/Lists"
+  >
+    Full collection of CSV detection lists covering services, user-agents, ports, certificates, named pipes, TLDs, and more.
+  </Card>
+  <Card
+    title="ThreatHunting guides"
+    icon="book-open"
+    href="https://mthcht.medium.com/list/threat-hunting-708624e9266f"
+  >
+    Published hunting guides covering the techniques documented in this section.
+  </Card>
+</CardGroup>
+
+## ThreatHunting Keywords site
+
+The [ThreatHunting Keywords site](https://mthcht.github.io/ThreatHunting-Keywords/) provides a searchable interface over the keyword CSV data. Use it to look up a specific tool name and see every pattern associated with it before writing a query.
+
+<Tip>
+  Start with the ThreatHunting Keywords site to scope which CSV rows are relevant to a specific tool or threat actor before pulling the full list into your SIEM.
+</Tip>

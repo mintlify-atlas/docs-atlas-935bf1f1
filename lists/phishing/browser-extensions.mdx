@@ -1,0 +1,118 @@
+---
+title: "Suspicious Browser Extensions"
+description: "Browser extension IDs associated with credential theft, ad fraud, and malicious behavior"
+---
+
+Malicious browser extensions are a rapidly growing threat vector. Unlike traditional malware, browser extensions operate with elevated trust inside the browser process, giving them access to session cookies, saved credentials, form input, and DOM content on every page the user visits—including banking portals and corporate SaaS applications. Many extensions masquerade as productivity tools, ad blockers, or AI assistants while silently exfiltrating data.
+
+<Info>
+  Read the full detection guide: [Detecting Browser Extension Installations](https://mthcht.medium.com/detecting-browser-extensions-installations-e0ac2b45c46b)
+</Info>
+
+## List: browser\_extensions\_list.csv
+
+**File:** `Lists/Browser Extensions/browser_extensions_list.csv`
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/Browser%20Extensions/browser_extensions_list.csv`
+
+**Raw CSV:**
+`https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Browser%20Extensions/browser_extensions_list.csv`
+
+This list contains 1,700+ extension entries compiled from stealer malware targeting lists, threat intelligence reports, and community submissions. It covers extensions that are:
+- Targeted by credential stealers (i.e. the extension stores secrets that malware harvests)
+- Directly malicious (credential theft, keylogging, ad fraud, remote access)
+- Potentially unwanted (privacy risks, excessive data collection)
+
+Also see the companion project [ExtSentry](https://extsentry.github.io) for additional feed options and remediation suggestions.
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `browser_extension` | Human-readable extension name |
+| `browser_extension_id_wildcard` | Extension ID with surrounding wildcards for registry/log matching |
+| `browser_extension_id` | Bare Chrome Web Store extension ID (32-character string) |
+| `metadata_category` | Category: `malware`, `PUP` (Potentially Unwanted Program), `stealer_target` |
+| `metadata_type` | Behavior type: `malicious`, `privacy`, `credential_stealer_target`, etc. |
+| `metadata_link` | Reference URL (Chrome Web Store listing, threat report, Twitter/X post) |
+| `metadata_comment` | Description of the threat or why the extension is listed |
+| `crx_file_sha256` | SHA-256 hash of the CRX package file (where available) |
+
+### Example Entries
+
+| Extension | ID | Category | Threat |
+|-----------|-----|---------|--------|
+| Chrome MCP Server - AI Browser Control | `fpeabamapgecnidibdmjoepaiehokgda` | malware | RAT disguised as AI browser extension |
+| JSON Formatter | `bcjindcccaagfpapjjmafapmmgkkhgoa` | PUP | Privacy concerns flagged by researcher |
+| *(unnamed)* | `nplfchpahihleeejpjmodggckakhglee` | malware | Bank credential stealer |
+| *(unnamed)* | `ckkjdiimhlanonhceggkfjlmjnenpmfm` | malware | Bank credential stealer |
+
+## Detection
+
+### Windows Registry
+
+Chrome and Chromium-based browsers store installed extensions in the Windows registry under:
+
+```
+HKCU\Software\Google\Chrome\Extensions\<extension_id>\
+HKLM\Software\Policies\Google\Chrome\ExtensionInstallForcelist\
+```
+
+Sysmon Event ID 13 (Registry value set) or Windows audit policy for registry modifications can surface extension installations. Match the key path against the `browser_extension_id_wildcard` column.
+
+### Splunk — Registry Event (Sysmon)
+
+```spl
+index=sysmon EventCode=13
+| rex field=TargetObject "Extensions\\(?P<ext_id>[a-z]{32})\\"
+| lookup browser_extensions_list browser_extension_id AS ext_id OUTPUT browser_extension, metadata_category, metadata_comment, metadata_type
+| where isnotnull(metadata_category)
+| table _time, host, user, ext_id, browser_extension, metadata_category, metadata_type, metadata_comment
+```
+
+### Splunk — Filesystem Event (Sysmon)
+
+Chrome extension directories are created at:
+`C:\Users\<user>\AppData\Local\Google\Chrome\User Data\Default\Extensions\<ext_id>\`
+
+```spl
+index=sysmon EventCode=11
+| rex field=TargetFilename "Extensions\\(?P<ext_id>[a-z]{32})\\"
+| lookup browser_extensions_list browser_extension_id AS ext_id OUTPUT browser_extension, metadata_category, metadata_comment
+| where isnotnull(metadata_category)
+| table _time, host, user, ext_id, browser_extension, metadata_category, metadata_comment
+```
+
+## Investigation Tools
+
+<CardGroup cols={2}>
+  <Card title="CRXaminer" icon="magnifying-glass">
+    Analyze Chrome extension CRX packages for malicious code, suspicious permissions, and obfuscation patterns without installing the extension.
+  </Card>
+  <Card title="AppTotal" icon="chart-bar">
+    Browser extension threat intelligence platform. Submit an extension ID or CRX for automated static and dynamic analysis.
+
+    [apptotal.io](https://apptotal.io)
+  </Card>
+  <Card title="ExtensionHound" icon="dog">
+    DNS forensics tool for Chrome extensions. Identifies which extension generated specific DNS queries, enabling attribution of C2 communication to a specific extension.
+  </Card>
+  <Card title="ExtSentry" icon="eye">
+    Feed aggregator and remediation platform for browser extension monitoring.
+
+    [extsentry.github.io](https://extsentry.github.io)
+  </Card>
+</CardGroup>
+
+## VSCODE Extensions
+
+The `Lists/VSCODE Extensions/` directory contains a parallel list of suspicious Visual Studio Code extensions targeting developer environments. Malicious VS Code extensions can exfiltrate source code, steal environment variables (including cloud credentials and API keys), and establish persistent backdoors in developer workstations.
+
+**Directory:** `https://github.com/mthcht/awesome-lists/tree/main/Lists/VSCODE%20Extensions`
+
+Detection approach is similar: monitor the VS Code extension directory (`~/.vscode/extensions/`) and match installed extension IDs against the list.
+
+<Warning>
+  Extension IDs in the `stealer_target` category are not themselves malicious—they are legitimate extensions that attackers specifically target when deploying infostealers, because they store cryptocurrency wallet keys, password manager data, or authentication tokens. Prioritize detections for these extensions being accessed by unexpected processes.
+</Warning>

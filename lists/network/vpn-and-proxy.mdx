@@ -1,0 +1,176 @@
+---
+title: "VPN & Proxy IP Lists"
+description: "IP address lists for major VPN providers and proxy services for detecting anonymized connections"
+---
+
+VPN services and open proxy relays are routinely used by attackers to anonymize their origin during intrusions, data exfiltration, and reconnaissance. Correlating network traffic against known VPN and proxy IP ranges lets you:
+
+- **Detect data exfiltration** routed through a VPN exit node to obscure the true destination
+- **Identify attacker pivoting** where lateral movement or credential stuffing originates from a commercial VPN
+- **Bypass geo-restriction evasion** by alerting when internal users connect through a VPN to access services that should only be reachable from a corporate network
+- **Enrich threat intelligence** by tagging events where the source or destination IP belongs to a known anonymization service
+
+<Note>
+  VPN usage by employees is often legitimate. Use these lists for enrichment and low-confidence alerting rather than hard blocks unless policy explicitly prohibits VPN use.
+</Note>
+
+## VPN provider lists
+
+All four provider lists are updated automatically as server infrastructure changes.
+
+<CardGroup cols={2}>
+  <Card title="NordVPN" icon="shield" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/VPN/NordVPN/nordvpn_ips_list.csv">
+    `nordvpn_ips_list.csv` — ~9,376 NordVPN server IPs
+  </Card>
+  <Card title="ProtonVPN" icon="shield" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/VPN/ProtonVPN/protonvpn_ip_list.csv">
+    `protonvpn_ip_list.csv` — Entry and exit IPs with country codes
+  </Card>
+  <Card title="Surfshark" icon="shield" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/VPN/SurfSharkVPN/surfshark_vpn_servers_domains_and_ips_list.csv">
+    `surfshark_vpn_servers_domains_and_ips_list.csv` — Server hostnames, IPs, and ports
+  </Card>
+  <Card title="Mullvad" icon="shield" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/VPN/MullVad/mullvad_relay_servers_ips_list.csv">
+    `mullvad_relay_servers_ips_list.csv` — Relay IPs with hostnames and WireGuard ports
+  </Card>
+</CardGroup>
+
+<Card title="Browse all VPN lists on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/VPN/">
+  Full VPN directory, combined list script, and per-provider subdirectories
+</Card>
+
+### CSV structures
+
+<Tabs>
+  <Tab title="NordVPN">
+    ```csv
+    src_ip,metadata_servername,metadata_comment
+    185.247.70.179,N/A,https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/...
+    ```
+
+    | Column | Description |
+    |---|---|
+    | `src_ip` | NordVPN server IP address |
+    | `metadata_servername` | Server hostname (if available) |
+    | `metadata_comment` | Source feed reference |
+  </Tab>
+  <Tab title="ProtonVPN">
+    ```csv
+    src_ip_entry,src_ip_exit,src_country_entry,src_country_exit
+    185.159.156.56,45.14.71.15,SE,JP
+    ```
+
+    | Column | Description |
+    |---|---|
+    | `src_ip_entry` | Entry node IP (seen by the client) |
+    | `src_ip_exit` | Exit node IP (seen by the destination) |
+    | `src_country_entry` | Entry node country code |
+    | `src_country_exit` | Exit node country code |
+  </Tab>
+  <Tab title="Surfshark">
+    ```csv
+    dest_nt_domain,dest_port,dest_ip
+    gh-acc.prod.surfshark.com,1194,102.218.100.117
+    ```
+
+    | Column | Description |
+    |---|---|
+    | `dest_nt_domain` | Server hostname |
+    | `dest_port` | VPN protocol port (1194 for OpenVPN, 1443 for SSL) |
+    | `dest_ip` | Server IP address |
+  </Tab>
+  <Tab title="Mullvad">
+    ```csv
+    dest_ip,dest_nt_domain,dest_port
+    103.124.165.130,al-tia-wg-003.relays.mullvad.net,51820
+    ```
+
+    | Column | Description |
+    |---|---|
+    | `dest_ip` | Relay IP address (IPv4 and IPv6 entries) |
+    | `dest_nt_domain` | Relay hostname |
+    | `dest_port` | WireGuard port (typically 51820) |
+  </Tab>
+</Tabs>
+
+## Proxy lists
+
+Open and commercial proxy IPs are aggregated into a combined list from multiple community sources.
+
+<CardGroup cols={2}>
+  <Card title="ALL_PROXY_Lists.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/PROXY/ALL_PROXY_Lists.csv">
+    ~12,177 combined proxy entries (IP + port)
+  </Card>
+  <Card title="Browse PROXY directory on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/PROXY/">
+    Per-source proxy lists and aggregation script
+  </Card>
+</CardGroup>
+
+**CSV structure — ALL_PROXY_Lists.csv:**
+
+| Column | Description |
+|---|---|
+| `dest_ip` | Proxy server IP address |
+| `dest_port` | Proxy port (HTTP, SOCKS4, SOCKS5) |
+| `metadata_comment` | Source feeds that reported this entry |
+
+## Additional resources
+
+<CardGroup cols={2}>
+  <Card title="ip_location_sites_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/GeoIP/ip_location_sites_list.csv">
+    GeoIP lookup services — including those used by Conti and other threat actors for victim fingerprinting
+  </Card>
+  <Card title="Company IP Ranges" icon="folder-open" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/Ranges_IP_Address_Company_List/">
+    IP ranges for major companies (Microsoft and others) for allow-listing or source enrichment
+  </Card>
+</CardGroup>
+
+## Using the lists for log enrichment
+
+<Tabs>
+  <Tab title="Splunk">
+    Upload each VPN CSV as a Splunk lookup, then enrich firewall or proxy events:
+
+    ```spl
+    index=network sourcetype=firewall action=allowed
+    | lookup nordvpn_ips_list.csv src_ip OUTPUT metadata_servername AS vpn_provider
+    | lookup mullvad_relay_servers_ips_list.csv dest_ip OUTPUT dest_nt_domain AS mullvad_relay
+    | lookup ALL_PROXY_Lists.csv dest_ip dest_port OUTPUT metadata_comment AS proxy_source
+    | eval anonymizer=coalesce(vpn_provider, mullvad_relay, proxy_source)
+    | where isnotnull(anonymizer)
+    | table _time src_ip dest_ip dest_port anonymizer
+    | sort -_time
+    ```
+
+    To detect internal hosts connecting *to* a VPN service (potential exfil or policy violation):
+
+    ```spl
+    index=network sourcetype=proxy
+    | lookup surfshark_vpn_servers_domains_and_ips_list.csv dest_ip OUTPUT dest_nt_domain AS surfshark_server
+    | lookup protonvpn_ip_list.csv dest_ip AS src_ip_entry OUTPUT src_country_exit
+    | eval vpn_hit=coalesce(surfshark_server, src_country_exit)
+    | where isnotnull(vpn_hit)
+    | stats count by src_ip dest_ip vpn_hit
+    ```
+  </Tab>
+  <Tab title="Elastic">
+    Load the combined VPN IP list into an enrichment index and apply a lookup enrich processor in your Logstash or Elastic Agent pipeline.
+
+    Example KQL query for connections to known VPN IPs:
+
+    ```text
+    destination.ip: (185.247.70.179 or 193.160.246.186) or source.ip: (185.247.70.179 or 193.160.246.186)
+    ```
+
+    For production use, import the full CSV into a reference index and use an [enrich processor](https://www.elastic.co/guide/en/elasticsearch/reference/current/enrich-processor.html) keyed on `destination.ip`.
+  </Tab>
+  <Tab title="Firewall / Network">
+    Use the combined IP lists to populate a threat intelligence feed in your next-generation firewall or NGIPS. Most platforms accept CSV or flat IP feeds via external blocklist/watchlist features.
+
+    For Palo Alto Networks:
+
+    ```text
+    set external-list <list-name> type ip source https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/VPN/NordVPN/nordvpn_ips_list.csv
+    ```
+
+    For alert-only (not block) policies, map the list to a security profile with a `log and allow` action so you have visibility without disrupting legitimate VPN usage.
+  </Tab>
+</Tabs>

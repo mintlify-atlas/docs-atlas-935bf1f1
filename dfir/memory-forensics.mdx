@@ -1,0 +1,181 @@
+---
+title: "Memory Forensics"
+description: "Memory acquisition and analysis tools for incident response and malware analysis"
+---
+
+Memory forensics examines the contents of physical RAM to uncover evidence that never touches disk: injected shellcode, decrypted payloads, credential material, running network connections, and process structures manipulated by rootkits. This page covers the acquisition and analysis tools used in production DFIR engagements.
+
+## Memory acquisition
+
+Acquiring memory requires a tool that interacts with the kernel. The right tool depends on the operating system and deployment environment.
+
+<CardGroup cols={3}>
+  <Card title="WinPmem" icon="windows" href="https://github.com/Velocidex/WinPmem">
+    Open-source Windows memory acquisition tool from Velocidex (the Velociraptor team). Outputs raw, padded, or ELF core dump formats. Actively maintained and compatible with modern Windows versions including Server 2022. **Platform:** Windows
+  </Card>
+  <Card title="avml" icon="cloud" href="https://github.com/microsoft/avml">
+    Microsoft's Acquire Volatile Memory for Linux. Designed for cloud VMs and Azure environments. Produces a compressed LiME-format memory image without requiring a kernel module. **Platform:** Linux
+  </Card>
+  <Card title="LiME" icon="memory" href="https://github.com/504ensicsLabs/LiME">
+    Linux Memory Extractor. A loadable kernel module (LKM) that acquires memory from Linux and Android systems. Supports local and network-based (TCP) acquisition for live response. **Platform:** Linux, Android
+  </Card>
+</CardGroup>
+
+<Warning>
+  Memory acquisition must be performed before rebooting or shutting down a system. Volatile data — running processes, network connections, encryption keys, and injected code — is lost on power-off. Prioritize acquisition as early as possible in the incident response process.
+</Warning>
+
+## Memory analysis
+
+<CardGroup cols={2}>
+  <Card title="Volatility3" icon="flask" href="https://github.com/volatilityfoundation/volatility3/">
+    The primary open-source memory forensics framework. Analyzes memory dumps from Windows, Linux, and macOS using a plugin-based architecture. Requires symbol tables for the target OS. **Platform:** Windows, Linux, macOS
+  </Card>
+  <Card title="MemProcFS" icon="folder-tree" href="https://github.com/ufrisk/MemProcFS">
+    Mounts a memory dump as a virtual file system, exposing processes, modules, handles, and registry hives as browsable files and directories. Dramatically lowers the barrier to memory analysis. **Platform:** Windows, Linux
+  </Card>
+</CardGroup>
+
+### MemProcFS-Analyzer
+
+<Card title="MemProcFS-Analyzer" icon="chart-line" href="https://github.com/LETHAL-FORENSICS/MemProcFS-Analyzer">
+  PowerShell script from LETHAL-FORENSICS that automates a comprehensive memory analysis workflow on top of MemProcFS. Runs checks for common malware indicators, generates reports, and integrates with third-party tools like Detect-It-Easy. **Platform:** Windows
+</Card>
+
+<Note>
+  MemProcFS-Analyzer is a practical starting point for automated analysis. It wraps MemProcFS and runs a series of checks that would otherwise require individual plugin invocations, making it useful for initial triage before deeper Volatility analysis.
+</Note>
+
+## Memory carving
+
+These tools scan memory for specific patterns rather than relying on OS data structures, which makes them effective against rootkits and process-manipulation techniques.
+
+<CardGroup cols={3}>
+  <Card title="hollows_hunter" icon="ghost" href="https://github.com/hasherezade/hollows_hunter">
+    Scans all running processes for process hollowing, PE injection, shellcode, and other code injection indicators. Dumps suspicious regions for offline analysis. **Platform:** Windows
+  </Card>
+  <Card title="PE-sieve" icon="bug" href="https://github.com/hasherezade/pe-sieve">
+    Scans a single process or memory dump for PE anomalies: IAT hooks, patched sections, implanted PEs, and reflectively loaded modules. The engine underlying hollows_hunter. **Platform:** Windows
+  </Card>
+  <Card title="Bulk Extractor" icon="boxes-stacked" href="https://github.com/simsong/bulk_extractor">
+    Carves features (URLs, email addresses, credit card numbers, Base64 blobs, EXIF data) from memory dumps and disk images using pattern matching, independent of file system structures. **Platform:** Windows, Linux, macOS
+  </Card>
+</CardGroup>
+
+## Typical memory forensics workflow
+
+<Steps>
+  <Step title="Acquire memory">
+    Use the appropriate tool for the target OS. On Windows, run WinPmem from an administrator prompt. On Linux, load LiME or run avml. Save the output to a trusted external location.
+
+    ```bash
+    # Windows — acquire to a raw dump
+    winpmem_mini_x64_rc2.exe memdump.raw
+
+    # Linux — acquire using avml (no kernel module required)
+    sudo avml /mnt/external/memory.lime
+
+    # Linux — acquire using LiME over TCP (remote collection)
+    sudo insmod lime.ko "path=tcp:4444 format=lime"
+    ```
+  </Step>
+
+  <Step title="Identify the OS profile / symbols">
+    Volatility3 requires symbol tables for the target operating system. For Windows, download the appropriate ISF symbols from the [Volatility symbol server](https://downloads.volatilityfoundation.org/volatility3/symbols/). For Linux, build symbols from the running kernel's debug package or use the `dwarf2json` utility.
+
+    ```bash
+    # List available Windows symbol tables
+    ls ~/.local/lib/python3.x/site-packages/volatility3/symbols/windows/
+    ```
+  </Step>
+
+  <Step title="Run initial triage plugins">
+    Start with process and network enumeration to orient the investigation.
+
+    ```bash
+    # List running processes as a tree
+    python3 vol.py -f memdump.raw windows.pstree
+
+    # Show full command lines for each process
+    python3 vol.py -f memdump.raw windows.cmdline
+
+    # List active and recently closed network connections
+    python3 vol.py -f memdump.raw windows.netstat
+
+    # List loaded DLLs per process
+    python3 vol.py -f memdump.raw windows.dlllist
+    ```
+  </Step>
+
+  <Step title="Hunt for injected code">
+    Look for process hollowing, shellcode, and injected PE files.
+
+    ```bash
+    # Detect VAD regions with suspicious permissions (RWX)
+    python3 vol.py -f memdump.raw windows.malfind
+
+    # Show processes with discrepancies between PEB and VAD data
+    python3 vol.py -f memdump.raw windows.vadinfo --pid 1234
+    ```
+
+    On a live system, run hollows_hunter to scan all processes simultaneously:
+
+    ```bash
+    # Scan all processes and dump suspicious regions
+    hollows_hunter.exe /dir C:\dumps /jlvl 1
+    ```
+  </Step>
+
+  <Step title="Dump and analyze artifacts">
+    Extract specific processes, modules, or memory regions for offline analysis.
+
+    ```bash
+    # Dump a specific process executable
+    python3 vol.py -f memdump.raw windows.pslist --pid 1234 --dump
+
+    # Dump all DLLs from a suspicious process
+    python3 vol.py -f memdump.raw windows.dlllist --pid 1234 --dump
+
+    # Extract registry hives from memory
+    python3 vol.py -f memdump.raw windows.registry.hivelist
+    python3 vol.py -f memdump.raw windows.registry.printkey --key "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+    ```
+  </Step>
+
+  <Step title="Automated analysis with MemProcFS-Analyzer">
+    For a comprehensive initial pass, run MemProcFS-Analyzer on the memory dump. It mounts the image via MemProcFS and executes a battery of checks automatically, outputting structured reports.
+
+    ```bash
+    # Run MemProcFS-Analyzer on a memory dump (Windows PowerShell, run as Administrator)
+    .\MemProcFS-Analyzer.ps1 -MemoryFile "C:\evidence\memdump.raw"
+    ```
+
+    <Note>
+      MemProcFS-Analyzer generates output in a structured directory tree. Review the `PE_Injection`, `Hollowing`, and `Network` subdirectories first during triage.
+    </Note>
+  </Step>
+</Steps>
+
+## Useful Volatility3 plugin reference
+
+| Plugin | Purpose |
+|---|---|
+| `windows.pstree` | Process tree with parent-child relationships |
+| `windows.cmdline` | Full command lines for all processes |
+| `windows.netstat` | Active and closed network connections |
+| `windows.dlllist` | Loaded DLLs per process |
+| `windows.malfind` | VAD regions with RWX permissions (injection indicator) |
+| `windows.handles` | Open handles per process |
+| `windows.filescan` | Scan for FILE_OBJECT structures in memory |
+| `windows.registry.hivelist` | Loaded registry hives |
+| `windows.registry.printkey` | Read specific registry keys from memory |
+| `windows.hashdump` | Extract NTLM password hashes from SAM/SYSTEM |
+| `windows.cachedump` | Extract cached domain credentials (MSCache) |
+| `linux.pslist` | Process list on Linux memory dumps |
+| `linux.bash` | Bash command history from memory |
+
+## Further reading
+
+- [The Art of Memory Forensics](https://www.amazon.com/Art-Memory-Forensics-Detecting-Malware/dp/1118825098) — Comprehensive reference for Windows, Linux, and macOS memory analysis
+- [13cubed — Investigating Windows Memory](https://training.13cubed.com/investigating-windows-memory) — Video training course on practical memory forensics
+- [DebugPrivilege / InsightEngineering](https://github.com/DebugPrivilege/InsightEngineering) — Free forensic debugging course covering Windows internals relevant to memory analysis

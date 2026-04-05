@@ -1,0 +1,95 @@
+---
+title: "Suspicious Hostnames"
+description: "Default and distinctive hostnames used by offensive tools, attack frameworks, and malware"
+---
+
+Most offensive Linux distributions and attack frameworks ship with a default hostname that operators rarely change. When a Kali Linux box, a Metasploit listener host, or a tool like Ruler connects to your network, that hostname appears in DHCP leases and authentication logs—often before any malicious activity is detected. This list turns those default hostnames into reliable, high-fidelity detection signals.
+
+## List: suspicious\_hostnames\_list.csv
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_hostnames_list.csv`
+
+**Raw CSV:**
+`https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_hostnames_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `src_nt_host` | Hostname or hostname pattern (wildcards supported, e.g. `kali*`, `parrot*`) |
+| `metadata_comment` | Description of the tool, distribution, or framework associated with this hostname |
+| `metadata_link` | Reference URL (project page, GitHub issue, documentation) |
+| `metadata_severity` | `critical`, `high`, `medium`, or `low` |
+| `metadata_usage` | `Detection` (use as a detection rule) or `Hunting` (use for proactive threat hunts) |
+| `metadata_log_type` | Log sources where this hostname appears (e.g. `DHCP - Successful Authentication`) |
+
+### Example Entries
+
+| Hostname Pattern | Tool / Distribution | Severity |
+|-----------------|---------------------|----------|
+| `blackarch` | BlackArch Linux live CD default hostname | critical |
+| `RULER` | Ruler Exchange attack tool — hardcoded static hostname | critical |
+| `kali*` | Kali Linux offensive distribution | high |
+| `parrot*` | Parrot OS offensive distribution | high |
+
+## Why Default Hostnames Are Detectable
+
+<CardGroup cols={2}>
+  <Card title="Operators Rarely Rename" icon="tag">
+    Most red teamers and attackers operate default installations. Renaming a hostname requires deliberate operational security steps that are frequently skipped in opportunistic attacks.
+  </Card>
+  <Card title="Logged at Network Entry" icon="network-wired">
+    DHCP requests and authentication events record the client-supplied hostname before any host-based agent can detect malicious activity. This is pre-execution visibility.
+  </Card>
+  <Card title="High Fidelity for Critical Entries" icon="circle-check">
+    Entries like `RULER` and `blackarch` have near-zero legitimate use in production environments. A match warrants immediate investigation.
+  </Card>
+  <Card title="Wildcard Coverage" icon="asterisk">
+    Patterns like `kali*` catch renamed variants (e.g. `kali-custom`, `kali-2024`) without requiring an exact match list.
+  </Card>
+</CardGroup>
+
+## Detection
+
+### Data Sources
+
+- **DHCP server logs** — client hostname is provided in the DHCP DISCOVER/REQUEST packet (Option 12)
+- **DNS logs** — hostname registration in internal DNS at lease time
+- **Windows authentication logs (Event 4624, 4625)** — `WorkstationName` field contains the source hostname for network logon events
+- **VPN / remote access logs** — device hostname recorded at tunnel establishment
+
+### Splunk — DHCP Detection
+
+```spl
+index=dhcp
+| lookup suspicious_hostnames_list src_nt_host AS hostname OUTPUT metadata_comment, metadata_severity
+| where isnotnull(metadata_comment)
+| table _time, src_ip, hostname, metadata_comment, metadata_severity
+| sort - metadata_severity
+```
+
+### Splunk — Windows Authentication Logs
+
+```spl
+`wineventlog_security` EventCode IN (4624, 4625)
+| rename WorkstationName AS src_nt_host
+| lookup suspicious_hostnames_list src_nt_host OUTPUT metadata_comment, metadata_severity
+| where isnotnull(metadata_comment)
+| table _time, src_nt_host, src_ip, user, EventCode, metadata_comment, metadata_severity
+```
+
+### Elastic — KQL (Authentication)
+
+```kql
+event.code: ("4624" OR "4625") AND
+source.domain: ("blackarch" OR "RULER" OR kali* OR parrot*)
+```
+
+<Warning>
+  Wildcard patterns like `kali*` may produce false positives in environments where the string "kali" is used in legitimate hostnames (e.g. `kali-backup-server`). Review the `metadata_fp_risk` in context and add exclusions for known-good hosts in your environment.
+</Warning>
+
+<Tip>
+  Combine hostname detection with USB ID and MAC address lookups for a stronger signal. A device that shows a suspicious hostname, connects with a Raspberry Pi MAC, and triggers Event ID 6416 is a high-confidence detection.
+</Tip>

@@ -1,0 +1,150 @@
+---
+title: "Suspicious Destination Ports"
+description: "CSV list of suspicious network destination ports used by malware and attack tools"
+---
+
+Many malware families, C2 frameworks, and offensive tools communicate over non-standard or well-known malicious destination ports. Detecting outbound or inbound connections on these ports — especially when originating from workstations or servers that have no legitimate business need — is a reliable hunting signal.
+
+This list aggregates known-bad destination ports across malware categories including RATs, backdoors, C2 frameworks, and exploit kits. Each entry carries a confidence rating, category label, and detection type to help you tune alerting thresholds appropriately.
+
+<Warning>
+  Many ports on this list also have legitimate uses. Always correlate port matches with process context, user behaviour, and destination IP reputation before escalating. The `metadata_confidence` column (`low`, `medium`, `high`) is your primary tuning lever.
+</Warning>
+
+## Download
+
+<CardGroup cols={2}>
+  <Card title="suspicious_ports_list.csv" icon="download" href="https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_ports_list.csv">
+    Raw CSV — ~230 entries, direct download
+  </Card>
+  <Card title="Browse on GitHub" icon="github" href="https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_ports_list.csv">
+    View file history and full content
+  </Card>
+</CardGroup>
+
+## CSV structure
+
+| Column | Description |
+|---|---|
+| `dest_port` | Destination TCP/UDP port number |
+| `metadata_comment` | Human-readable note on known uses |
+| `metadata_confidence` | Confidence level: `low`, `medium`, `high` |
+| `metatada_category` | Broad category, e.g. `malware`, `c2`, `rat` |
+| `metadata_detection_type` | Detection intent: `hunting` or `alert` |
+| `metadata_link` | Optional external reference for the port |
+| `metadata_reference` | Source attribution |
+
+**Example rows:**
+
+```csv
+dest_port,metadata_comment,metadata_confidence,metatada_category,metadata_detection_type,metadata_link,metadata_reference
+666,multiple malwares callback communications but also legit usages,medium,malware,hunting,,https://github.com/mthcht/awesome-lists/tree/main/Lists
+801,manjusaka (cobalt strike chinese clone) default panel ui,medium,malware,hunting,,https://github.com/mthcht/awesome-lists/tree/main/Lists
+```
+
+## Using the list
+
+<Tabs>
+  <Tab title="Splunk">
+    Upload the CSV as a lookup table, then reference it in a search:
+
+    ```spl
+    | inputlookup suspicious_ports_list.csv
+    | rename dest_port as port
+    ```
+
+    Or enrich firewall/proxy events in real time:
+
+    ```spl
+    index=network sourcetype=firewall action=allowed
+    | lookup suspicious_ports_list.csv dest_port OUTPUT metadata_comment metadata_confidence metatada_category
+    | where isnotnull(metadata_confidence)
+    | eval risk=case(
+        metadata_confidence=="high",   "HIGH",
+        metadata_confidence=="medium", "MEDIUM",
+        true(),                        "LOW"
+      )
+    | table _time src_ip dest_ip dest_port metatada_category metadata_comment risk
+    | sort -risk
+    ```
+
+    To focus only on higher-confidence hits suitable for alerting:
+
+    ```spl
+    index=network sourcetype=firewall
+    | lookup suspicious_ports_list.csv dest_port OUTPUT metadata_confidence metadata_detection_type metatada_category
+    | where metadata_confidence IN ("medium","high") AND metadata_detection_type="alert"
+    ```
+  </Tab>
+  <Tab title="Elastic">
+    Load the CSV into an Elasticsearch index (e.g., via Logstash or a Fleet integration), then use an enrich processor or a runtime field:
+
+    ```json
+    GET network-*/_search
+    {
+      "query": {
+        "terms": {
+          "destination.port": [666, 801, 999, 1005]
+        }
+      }
+    }
+    ```
+
+    For a dynamic lookup, create a [terms enum lookup](https://www.elastic.co/guide/en/elasticsearch/reference/current/enrich-processor.html) from the CSV index so new ports are picked up automatically.
+
+    Example KQL for Kibana:
+
+    ```text
+    destination.port: (666 or 801 or 999 or 1005) and not process.name: "legitimate_app.exe"
+    ```
+  </Tab>
+  <Tab title="Zeek">
+    Load the port list into a Zeek input framework table and raise a notice on matches:
+
+    ```zeek
+    module SuspiciousPorts;
+
+    export {
+        redef enum Notice::Type += { Hit };
+    }
+
+    global suspicious_ports: set[port] = {};
+
+    event zeek_init() {
+        Input::add_table([
+            $source     = "/opt/zeek/share/suspicious_ports_list.csv",
+            $name       = "suspicious_ports",
+            $idx        = SuspiciousPorts::PortIdx,
+            $val        = SuspiciousPorts::PortVal,
+            $destination= suspicious_ports,
+            $mode       = Input::REREAD
+        ]);
+    }
+
+    event connection_established(c: connection) {
+        if ( c$id$resp_p in suspicious_ports ) {
+            NOTICE([$note=Hit,
+                    $conn=c,
+                    $msg=fmt("Connection to suspicious port %s", c$id$resp_p)]);
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Notable malware C2 ports
+
+The list includes ports associated with widely deployed attack tools. Some examples:
+
+| Port | Known usage |
+|---|---|
+| 666 | Multiple malware families, generic callback |
+| 801 | Manjusaka C2 (Cobalt Strike clone) default panel |
+| 4444 | Metasploit meterpreter default listener |
+| 1604 | DarkComet RAT |
+| 8888 | Common C2 and tunnel ports |
+| 47000 | Comnie RAT |
+
+<Note>
+  Common ports such as 80, 443, and 8080 are intentionally excluded from this list because they generate too many false positives as standalone signals. For HTTP/S-based C2 detection, combine user-agent analysis and JA3/JA4 fingerprinting with destination reputation.
+</Note>

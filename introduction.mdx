@@ -1,0 +1,92 @@
+---
+title: "Introduction"
+description: "What Awesome Security Lists is and why security teams use it"
+---
+
+Awesome Security Lists is a curated repository of detection lists, YARA rules, and security resource links maintained by [mthcht](https://github.com/mthcht). The core of the project is a collection of CSV files you can drop directly into SIEM lookups, detection rules, and threat hunting queries — no preprocessing required.
+
+## Who it's for
+
+The lists are built for practitioners who need reliable, high-signal data in their daily workflows:
+
+- **SOC analysts** running detection rules against logs and alert queues
+- **Threat hunters** searching for behavioral indicators across endpoints and network telemetry
+- **DFIR responders** pivoting on artifacts during incident investigations
+- **CTI teams** enriching intelligence reports with curated IOC and tool-usage data
+
+## What makes these lists useful
+
+Each CSV is maintained after hands-on analysis of real attacker tooling. The lists are not scraped from arbitrary sources — they reflect indicators that have appeared in threat reports, sandbox analysis, and purple team exercises. Columns include SIEM-ready metadata for Splunk, Elastic, EQL, Sigma, and QRadar so you can reference the right field for your platform without reformatting the data.
+
+<Note>
+  Many lists include a `metadata_severity` or `metadata_fp_risk` column to help you tune detection thresholds and reduce false positives before deploying a rule in production.
+</Note>
+
+## How the repository is organized
+
+<CardGroup cols={2}>
+  <Card title="Detection Lists" icon="list-check" href="/lists/network/suspicious-ports">
+    CSV files covering network indicators, host artifacts, malware signatures, and identity data. These are the primary outputs of the project — download a file and use it as a lookup table in your SIEM.
+  </Card>
+  <Card title="Threat Hunting" icon="crosshairs" href="/threat-hunting/overview">
+    Keyword lists, YARA rules, and hunting technique guides derived from the same analysis used to build the detection lists.
+  </Card>
+  <Card title="DFIR" icon="magnifying-glass" href="/dfir/overview">
+    A curated reference of forensic tools, memory analysis utilities, artifact parsers, and incident response frameworks used by the community.
+  </Card>
+  <Card title="Threat Intelligence" icon="shield-halved" href="/ti/overview">
+    IOC feeds, TTP frameworks, investigation platforms, and threat actor tooling matrices for enriching CTI workflows.
+  </Card>
+</CardGroup>
+
+## List categories
+
+### Detection lists (CSV)
+
+The CSV files are the core deliverable. Each row is an indicator or tool pattern with metadata columns that map directly to SIEM query fields.
+
+| Category | Examples |
+|---|---|
+| Network & infrastructure | Suspicious ports, DNS-over-HTTPS servers, TOR exit nodes, VPN IPs, ASNs, TLDs |
+| Host & process | Windows service names, scheduled tasks, named pipes, mutex names, executable metadata |
+| Malware & threats | LOLDrivers, malicious bootloaders, SSL certificates, ransomware extensions and ransom notes |
+| RMM tool detection | 50+ remote management tools abused by threat actors, with per-tool severity ratings |
+| Phishing & domains | Phishing domains, malicious browser extensions, DNSTWIST lookalike domains |
+| Identity & access | Suspicious user agents, USB IDs, MAC addresses, hostnames, AD and EntraID permission groups |
+
+### Threat hunting resources
+
+The project links to the [ThreatHunting-Keywords](https://github.com/mthcht/ThreatHunting-Keywords) project, which provides:
+
+- **Offensive tool keywords** — patterns for known offensive tooling found in logs, command lines, and network traffic
+- **Greyware tool keywords** — dual-use tools commonly abused by attackers
+- **YARA rules** — generated from the keyword lists for file scanning and memory analysis
+- **Hunting guides** — published walkthroughs for each major list covering search logic for Splunk, Elastic, and KQL
+
+### DFIR tools and resources
+
+A categorized reference covering forensic acquisition, artifact parsing, memory analysis, timeline tools, and specialized operating systems for investigation work.
+
+### IOC feeds
+
+Curated links to public IOC feeds from vendors including Abuse.ch, Unit42, Elastic, Volexity, ESET, Cisco Talos, and community researchers.
+
+### Investigation platforms
+
+Links to threat intelligence lookup services, sandbox environments, and data manipulation tools for analyst workflows.
+
+## Automatically updated lists
+
+Several lists are refreshed automatically via GitHub Actions, so the data stays current without manual intervention:
+
+- **TOR exit nodes** — updated from authoritative TOR directory sources
+- **VPN server IPs** — NordVPN, ProtonVPN, Surfshark, and Mullvad relay servers
+- **Suspicious TLDs and ASNs** — continuously updated high-risk domain and network ranges
+- **LOLDrivers** — synchronized with the [loldrivers.io](https://www.loldrivers.io/) project
+- **Hijacklibs** — DLL hijacking opportunities from [hijacklibs.net](https://hijacklibs.net/)
+- **Malicious SSL certificates** — updated certificate indicator list
+- **DNSTWIST phishing domains** — regenerated lookalike domain lists
+
+<Tip>
+  If you're maintaining a SIEM lookup table from one of these auto-updated lists, set up a scheduled job to pull the latest raw CSV from GitHub rather than using a static snapshot.
+</Tip>

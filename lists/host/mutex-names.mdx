@@ -1,0 +1,95 @@
+---
+title: "Suspicious Mutex Names"
+description: "Mutex names associated with known malware families for host-based detection"
+---
+
+A mutex (mutual exclusion object) is a synchronization primitive used by Windows processes to signal exclusive access to a shared resource. Malware authors use mutexes to prevent a second copy of the implant from running on an already-infected host — a built-in self-deduplication mechanism. Because the mutex name must be consistent across executions, it is hardcoded into the malware binary, making it a stable and reliable indicator.
+
+## Why mutex names are reliable detection indicators
+
+Unlike network indicators (which change with infrastructure rotation) or file hashes (which change with recompilation), mutex names frequently survive:
+
+- **Recompilation and repackaging** — the mutex check is functional code, not cosmetic
+- **Version updates** — operators rarely change mutex names between minor releases
+- **Different campaigns** — crimeware-as-a-service tools reuse the same mutex across customers
+
+This makes mutex names one of the **highest-stability host indicators** available, particularly for commodity malware families such as RATs, info-stealers, and ransomware.
+
+<Warning>
+  Some malware generates mutex names dynamically from host identifiers (e.g. volume serial number). Those variants are not captured here. This list covers static, hardcoded mutex names only.
+</Warning>
+
+## CSV structure
+
+Download: [`suspicious_mutex_names_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_mutex_names_list.csv)
+
+<Note>
+  The CSV uses a UTF-8 BOM header. Ensure your parser handles the BOM character at the start of the `mutex` column name.
+</Note>
+
+| Column | Description |
+|---|---|
+| `mutex` | Mutex name as observed in memory or telemetry (wildcards supported, e.g. `Global\Livelet*`) |
+| `metadata_category` | Behavioral category: `RAT`, `malware`, `greyware` |
+| `metadata_threat` | Associated tool or malware family name (e.g. `WailingCrab`, `AutoHotKey`) |
+| `metadata_link` | Reference link to threat intelligence report or source |
+
+## Detection approach
+
+Mutex creation is not logged by Windows event logging by default. Detection requires one of the following telemetry sources:
+
+<Tabs>
+  <Tab title="Sysmon">
+    Sysmon does not have a dedicated mutex event. Mutex creation can be observed indirectly via **Sysmon Event ID 10** (process access) when a process opens an existing mutex, or through EDR telemetry. Some EDR products expose mutex creation as a dedicated event type.
+  </Tab>
+  <Tab title="EDR / XDR">
+    Most enterprise EDR platforms (CrowdStrike Falcon, Microsoft Defender for Endpoint, SentinelOne, Palo Alto Cortex XDR) surface mutex creation events natively. Query the platform's process or handle telemetry for mutex object creation where the name matches entries in this list.
+  </Tab>
+  <Tab title="Memory forensics">
+    During incident response, `volatility3` with the `windows.handles` plugin enumerates open handles including mutexes. Cross-reference against this list to identify infected processes.
+
+    ```text
+    vol -f memory.dmp windows.handles --types Mutant | grep -i "known_mutex_name"
+    ```
+  </Tab>
+</Tabs>
+
+### Splunk — detect mutex creation from EDR telemetry (generic example)
+
+```text
+index=edr sourcetype=edr_process_events event_type=mutex_create
+| lookup suspicious_mutex_names_list.csv mutex AS mutex_name
+    OUTPUT metadata_threat, metadata_category
+| where isnotnull(metadata_threat)
+| table _time, host, process_name, pid, mutex_name, metadata_threat, metadata_category
+| sort -_time
+```
+
+### Microsoft Defender for Endpoint (KQL)
+
+```text
+DeviceEvents
+| where ActionType == "CreateMutexApiCall"
+| lookup kind=inner (
+    externaldata(mutex: string, metadata_category: string, metadata_threat: string, metadata_link: string)
+    [@"https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_mutex_names_list.csv"]
+    with (format="csv", ignoreFirstRecord=true)
+) on $left.AdditionalFields has $right.mutex
+| project Timestamp, DeviceName, InitiatingProcessFileName, InitiatingProcessId, mutex, metadata_threat, metadata_category
+```
+
+## Wildcard entries
+
+Some entries use the `*` wildcard (e.g. `Global\Livelet*`) to cover dynamically generated suffixes that share a common static prefix. Configure your lookup table with wildcard support:
+
+```text
+[suspicious_mutex_names_list]
+filename = suspicious_mutex_names_list.csv
+match_type = WILDCARD(mutex)
+case_sensitive_match = false
+```
+
+## Related lists
+
+- [`suspicious_named_pipe_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_named_pipe_list.csv) — Named pipes used by the same malware families
+- [`suspicious_windows_services_names_list.csv`](https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_services_names_list.csv) — Services registered by the same tools

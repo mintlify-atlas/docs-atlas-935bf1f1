@@ -1,28 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Awesome Security Lists",
+  "projectType": "general",
+  "projectName": "Awesome Security Lists",
+  "projectDescription": "A curated collection of detection lists, IOC feeds, YARA rules, and security resources for SOC analysts, DFIR responders, and cyber threat intelligence teams.",
   "theme": "aspen",
-  "colors": {
-    "primary": "#242b2c",
-    "light": "#040404",
-    "dark": "#6a6a6d"
-  },
-  "favicon": "https://media.brand.dev/ee6343d7-855a-403a-bf10-e9c1df278e3c.png",
-  "logo": {
-    "light": "https://media.brand.dev/c1e3af42-7098-4c50-9cfe-baabb239e68b.svg",
-    "dark": "https://media.brand.dev/c1e3af42-7098-4c50-9cfe-baabb239e68b.svg"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/mthcht/awesome-lists"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/mthcht/awesome-lists"
-    }
-  },
+  "primaryColor": "#242b2c",
+  "lightColor": "#040404",
+  "darkColor": "#6a6a6d",
   "navigation": {
     "tabs": [
       {
@@ -143,5 +126,37 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Curated CSV detection lists for threat hunting (suspicious services, pipes, user agents, ports, etc.)",
+    "Automatically updated IOC and infrastructure lists (TOR, VPN, ASNs, TLDs, hijacklibs, LOLDrivers)",
+    "Comprehensive RMM tool detection patterns covering 50+ remote management tools",
+    "Ransomware detection data: file extensions, ransom note names, and known indicators",
+    "YARA rules and AV signature lists for malware detection (Defender, ClamAV)",
+    "Phishing intelligence: DNSTWIST lists, phishing domains, and suspicious browser extensions",
+    "Browser bookmark generator utility for all curated links",
+    "Curated lists of DFIR tools, IOC feeds, sandboxes, and investigation platforms",
+    "Security training resources, news feeds, podcasts, and community channels"
+  ],
+  "publicApiSurface": [
+    "Lists/suspicious_windows_services_names_list.csv",
+    "Lists/suspicious_http_user_agents_list.csv",
+    "Lists/suspicious_named_pipe_list.csv",
+    "Lists/suspicious_ports_list.csv",
+    "Lists/suspicious_windows_tasks_list.csv",
+    "Lists/ransomware_extensions_list.csv",
+    "Lists/ransomware_notes_list.csv",
+    "Lists/RMM/RMM_detection_patterns_list.csv",
+    "Lists/TOR/",
+    "Lists/VPN/",
+    "Lists/TLDs/",
+    "Lists/ASNs/",
+    "Lists/Hijacklibs/hijacklibs_list.csv",
+    "Lists/Drivers/loldrivers_only_hashes_list.csv",
+    "Lists/SSL CERTS/ssl_certificates_malicious_list.csv",
+    "Lists/Phishing/",
+    "Lists/Browser Extensions/",
+    "Lists/permissions/",
+    "_utils/create_bookmarks_file_to_import.py"
+  ]
 }

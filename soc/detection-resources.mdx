@@ -1,0 +1,184 @@
+---
+title: "Detection Resources"
+description: "MITRE frameworks, LOL resources, and detection engineering references"
+---
+
+A curated index of external resources used alongside the detection lists for building, validating, and improving detections across the full threat lifecycle.
+
+## MITRE frameworks
+
+<AccordionGroup>
+  <Accordion title="MITRE ATT&CK" defaultOpen={true}>
+    The primary adversary behavior framework used to categorize every detection in this collection.
+
+    <CardGroup cols={2}>
+      <Card title="Techniques" icon="crosshair" href="https://attack.mitre.org/techniques/enterprise/">
+        Full enterprise technique catalog with sub-techniques, data sources, and detection guidance.
+      </Card>
+      <Card title="Tactics" icon="list-ordered" href="https://attack.mitre.org/tactics/enterprise/">
+        The 14 high-level adversary goals from Reconnaissance to Impact.
+      </Card>
+      <Card title="Mitigations" icon="shield" href="https://attack.mitre.org/mitigations/enterprise/">
+        Defensive configurations and controls mapped to specific techniques.
+      </Card>
+      <Card title="ATT&CK Navigator" icon="map" href="https://mitre-attack.github.io/attack-navigator/">
+        Interactive heatmap for visualizing and measuring detection coverage.
+      </Card>
+      <Card title="Software & Groups" icon="users" href="https://attack.mitre.org/software/">
+        Tools used by tracked threat actor groups.
+      </Card>
+      <Card title="Data Sources" icon="database" href="https://attack.mitre.org/datasources/">
+        Telemetry sources that enable detection of each technique.
+      </Card>
+      <Card title="ATT&CK Data & Tools" icon="download" href="https://attack.mitre.org/resources/attack-data-and-tools/">
+        Full ATT&CK dataset in STIX and XLSX formats for offline analysis.
+      </Card>
+      <Card title="PRE-ATT&CK" icon="search" href="https://attack.mitre.org/versions/v7/techniques/pre/">
+        Reconnaissance and resource development techniques preceding the main attack lifecycle.
+      </Card>
+    </CardGroup>
+  </Accordion>
+
+  <Accordion title="MITRE D3FEND, CAPEC, and CAR">
+    <CardGroup cols={2}>
+      <Card title="D3FEND" icon="shield-half" href="https://d3fend.mitre.org/">
+        Defensive techniques mapped to offensive ATT&CK techniques. Useful for justifying security controls.
+      </Card>
+      <Card title="CAPEC" icon="bug" href="https://capec.mitre.org/">
+        Common Attack Pattern Enumeration and Classification — a catalog of attack patterns at a higher abstraction than ATT&CK.
+      </Card>
+      <Card title="CAR (Cyber Analytics Repository)" icon="chart-line" href="https://car.mitre.org/">
+        A MITRE-maintained repository of detection analytics expressed as pseudocode, with data model references.
+      </Card>
+      <Card title="DeTTECT" icon="chart-bar" href="https://github.com/rabobank-cdc/DeTTECT">
+        Score your data source quality and map existing detections to ATT&CK to identify gaps.
+      </Card>
+    </CardGroup>
+  </Accordion>
+</AccordionGroup>
+
+## Living-Off-the-Land (LOL) resources
+
+These resources catalog legitimate binaries, drivers, and services that adversaries abuse. The detection lists in this collection include synchronized copies of several LOL datasets (e.g., `loldrivers_only_hashes_list.csv`).
+
+<CardGroup cols={2}>
+  <Card title="LOLBAS" icon="terminal" href="https://github.com/mthcht/LOLBAS">
+    Living Off the Land Binaries, Scripts, and Libraries — Windows binaries with documented abuse cases.
+  </Card>
+  <Card title="GTFOBins" icon="terminal" href="https://github.com/mthcht/GTFOBins.github.io">
+    Unix binaries that can be exploited to bypass security controls or escalate privileges.
+  </Card>
+  <Card title="LOLDrivers" icon="microchip" href="https://www.loldrivers.io/">
+    Vulnerable and malicious Windows drivers used in BYOVD (Bring Your Own Vulnerable Driver) attacks. Hash list synced into `loldrivers_only_hashes_list.csv`.
+  </Card>
+  <Card title="LOLRMM" icon="monitor" href="https://github.com/magicsword-io/LOLRMM">
+    Remote monitoring and management (RMM) tools abused by threat actors. Synced into the RMM detection lists.
+  </Card>
+  <Card title="LOLC2" icon="network" href="https://github.com/lolc2/lolc2.github.io">
+    Legitimate services and protocols used to host or tunnel C2 communications. Referenced in `lolc2_abused_domains.csv`.
+  </Card>
+  <Card title="LOLESXI" icon="server" href="https://github.com/LOLESXi-Project/LOLESXi">
+    Techniques and binaries native to VMware ESXi hypervisors that ransomware groups exploit.
+  </Card>
+  <Card title="WTFBIN" icon="code" href="https://wtfbins.wtf/">
+    A catalog of unusual, abusable, or risky binaries and their documented behaviors.
+  </Card>
+  <Card title="LOTS Project" icon="cloud" href="https://lots-project.com/">
+    Living Off Trusted Sites — legitimate cloud services (GitHub, OneDrive, Dropbox) abused for C2, exfiltration, or hosting payloads.
+  </Card>
+  <Card title="LOLOLFarm" icon="leaf" href="https://lolol.farm/">
+    An aggregator that indexes content from LOLBAS, GTFOBins, LOLESXI, LOLRMM, and other LOL projects in one searchable interface.
+  </Card>
+</CardGroup>
+
+<Note>
+  The lists in `Lists/Drivers/` are updated automatically via CI. Pull the latest version before building detections on driver hashes.
+</Note>
+
+## Detection rule repositories
+
+### Sigma
+
+Sigma is the vendor-neutral detection rule format. Rules can be converted to Splunk SPL, Elastic EQL, KQL, and QRadar AQL using [sigma-cli](https://github.com/SigmaHQ/sigma-cli) or [Uncoder.io](https://uncoder.io/).
+
+<CardGroup cols={2}>
+  <Card title="SigmaHQ (official rules)" icon="file-code" href="https://github.com/mthcht/sigma/tree/master/rules">
+    The primary Sigma rule repository maintained by the Sigma project.
+  </Card>
+  <Card title="DFIR-Report Sigma Rules" icon="file-code" href="https://github.com/The-DFIR-Report/Sigma-Rules">
+    Rules authored from real incident investigations published by The DFIR Report.
+  </Card>
+  <Card title="JoeSecurity Sigma Rules" icon="file-code" href="https://github.com/joesecurity/sigma-rules/tree/master/rules">
+    Rules derived from malware analysis runs in the Joe Sandbox environment.
+  </Card>
+  <Card title="mdecrevoisier Sigma Rules" icon="file-code" href="https://github.com/mdecrevoisier/SIGMA-detection-rules">
+    A large community collection covering Windows event logs, network, and cloud sources.
+  </Card>
+  <Card title="P4T12ICK Sigma Rules" icon="file-code" href="https://github.com/P4T12ICK/Sigma-Rule-Repository">
+    Community rules focused on endpoint and Active Directory detections.
+  </Card>
+  <Card title="tsale Sigma Rules" icon="file-code" href="https://github.com/tsale/Sigma_rules">
+    Rules published by the author of the EDR Telemetry project, focusing on behavioral detections.
+  </Card>
+</CardGroup>
+
+### Platform-specific rule repositories
+
+<CardGroup cols={2}>
+  <Card title="Splunk Security Research" icon="bar-chart" href="https://research.splunk.com/detections/">
+    Splunk's official detection library covering endpoint, network, cloud, and application threats.
+  </Card>
+  <Card title="Elastic Detection Rules" icon="search" href="https://github.com/elastic/detection-rules">
+    Elastic's prebuilt detection rules in EQL and KQL for the Elastic Security platform.
+  </Card>
+  <Card title="Awesome Detection Rules" icon="list" href="https://github.com/jatrost/awesome-detection-rules">
+    A curated index of detection rule repositories across all major SIEM and EDR platforms.
+  </Card>
+  <Card title="Awesome Detection Engineering" icon="wrench" href="https://github.com/infosecB/awesome-detection-engineering">
+    Resources on detection engineering processes, frameworks, and tooling.
+  </Card>
+</CardGroup>
+
+## KQL hunting queries
+
+<Card title="Bert-JanP: Hunting Queries & Detection Rules" icon="search" href="https://github.com/Bert-JanP/Hunting-Queries-Detection-Rules">
+  A comprehensive collection of KQL queries for Microsoft Sentinel and Microsoft Defender XDR, organized by ATT&CK tactic. Covers identity, endpoint, email, and cloud workloads.
+</Card>
+
+<Info>
+  Bert-JanP also maintains the [Open-Source-Threat-Intel-Feeds](https://github.com/Bert-JanP/Open-Source-Threat-Intel-Feeds) repository, which can be used to enrich the IOC-based detection lists.
+</Info>
+
+## Purple Team and simulation
+
+<CardGroup cols={2}>
+  <Card title="Atomic Red Team" icon="flask-conical" href="https://github.com/redcanaryco/atomic-red-team">
+    A library of small, portable tests mapped directly to ATT&CK techniques. Use these to confirm your detections fire when the technique is executed.
+  </Card>
+  <Card title="PurpleTeam Scripts" icon="shield-half" href="https://github.com/mthcht/Purpleteam">
+    Detection scripts and threat hunting queries maintained alongside this collection, organized by technique and data source.
+  </Card>
+</CardGroup>
+
+## SOC and detection engineering references
+
+<CardGroup cols={2}>
+  <Card title="Awesome-SOC" icon="building" href="https://github.com/cyb3rxp/awesome-soc">
+    A comprehensive reference for building and operating a modern SOC, covering processes, tooling, and metrics.
+  </Card>
+  <Card title="Awesome SOC Analyst" icon="user" href="https://github.com/st0pp3r/awesome-soc-analyst">
+    Resources curated for SOC analysts, including triage guides, playbooks, and tool references.
+  </Card>
+  <Card title="EDR Telemetry Project" icon="activity" href="https://github.com/tsale/EDR-Telemetry">
+    A comparison matrix of telemetry visibility across major EDR products, helping you understand which log sources are available for each detection.
+  </Card>
+  <Card title="Awesome Threat Detection" icon="radar" href="https://github.com/0x4D31/awesome-threat-detection">
+    A broader collection of threat detection and hunting tools, papers, and frameworks.
+  </Card>
+  <Card title="Defender Resource Hub" icon="shield" href="https://defenderresourcehub.info/">
+    Consolidated resources for Microsoft Defender for Endpoint, Identity, and Cloud.
+  </Card>
+  <Card title="ThreatHunting Keywords" icon="key" href="https://github.com/mthcht/ThreatHunting-Keywords">
+    Keyword-based detection patterns for offensive tools and greyware, with Splunk and SIEM-ready columns.
+  </Card>
+</CardGroup>

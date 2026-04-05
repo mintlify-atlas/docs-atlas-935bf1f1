@@ -1,0 +1,81 @@
+---
+title: "SOC & Detection Engineering Overview"
+description: "Resources for building and operating a Security Operations Center and detection engineering program"
+---
+
+The mthcht/awesome-lists repository is a curated collection of structured detection data, rule repositories, and testing frameworks designed to accelerate SOC operations and detection engineering workflows.
+
+## How this collection supports your SOC
+
+Whether you are writing new detections, tuning existing alerts, or validating coverage against real-world adversary techniques, this collection provides the raw material at every step. The lists are maintained as CSV files with rich metadata columns, making them directly importable into any SIEM as lookup tables or reference data.
+
+## The three pillars
+
+<CardGroup cols={3}>
+  <Card title="Detection Data" icon="database" href="https://github.com/mthcht/awesome-lists/tree/main/Lists">
+    Curated CSV lists covering Windows services, named pipes, user agents, network ports, USB IDs, ransomware extensions, and more — each enriched with severity, category, and tool attribution metadata.
+  </Card>
+  <Card title="Detection Rules" icon="shield-check" href="/soc/siem-and-rules">
+    Sigma rules, Splunk SPL detections, Elastic EQL queries, and KQL hunting queries that reference the lists and codify detection logic for each threat category.
+  </Card>
+  <Card title="Purple Team Testing" icon="flask-conical" href="https://github.com/mthcht/Purpleteam">
+    Atomic Red Team tests and PurpleTeam scripts that simulate the adversary techniques these lists detect, closing the loop between coverage and validation.
+  </Card>
+</CardGroup>
+
+## Explore the documentation
+
+<CardGroup cols={2}>
+  <Card title="Detection Resources" icon="binoculars" href="/soc/detection-resources">
+    MITRE ATT&CK frameworks, Living-Off-the-Land (LOL) references, Sigma community repos, and KQL hunting queries organized by category.
+  </Card>
+  <Card title="SIEM & Detection Rules" icon="layers" href="/soc/siem-and-rules">
+    Step-by-step guidance for ingesting the CSV lists into Splunk, Elastic, Microsoft Sentinel, and QRadar, with example queries and Sigma rule patterns.
+  </Card>
+</CardGroup>
+
+## MITRE ATT&CK integration
+
+Every list in this collection maps detections back to the MITRE ATT&CK framework. The `metadata_tactic` and technique columns in the CSV files let you filter detections by ATT&CK tactic and measure your coverage programmatically.
+
+<CardGroup cols={2}>
+  <Card title="ATT&CK Techniques" icon="crosshair" href="https://attack.mitre.org/techniques/enterprise/">
+    Browse the full enterprise technique catalog.
+  </Card>
+  <Card title="ATT&CK Navigator" icon="map" href="https://mitre-attack.github.io/attack-navigator/">
+    Visualize detection coverage across the ATT&CK matrix.
+  </Card>
+  <Card title="MITRE D3FEND" icon="shield" href="https://d3fend.mitre.org/">
+    Defensive countermeasures mapped to offensive techniques.
+  </Card>
+  <Card title="DeTTECT" icon="chart-bar" href="https://github.com/rabobank-cdc/DeTTECT">
+    Score your data source quality and detection coverage against ATT&CK.
+  </Card>
+</CardGroup>
+
+<Info>
+  The ATT&CK Navigator is particularly useful for identifying blind spots. Export your current Sigma rule set, overlay it on the matrix, and compare against the techniques covered by the detection lists.
+</Info>
+
+## Purple Team and detection validation
+
+Detections are only valuable if they fire when expected. The [PurpleTeam scripts](https://github.com/mthcht/Purpleteam) and [Atomic Red Team](https://github.com/redcanaryco/atomic-red-team) atomics allow you to simulate the exact adversary behaviors that the lists are designed to detect.
+
+<Steps>
+  <Step title="Pick a detection list">
+    Choose a list such as `suspicious_named_pipe_list.csv` or `suspicious_windows_services_names_list.csv` and ingest it as a SIEM lookup table.
+  </Step>
+  <Step title="Write or import a detection rule">
+    Use the corresponding Sigma rule or SPL query to alert when an event matches a value in the list. See [SIEM & Detection Rules](/soc/siem-and-rules) for platform-specific examples.
+  </Step>
+  <Step title="Simulate the technique">
+    Run the matching Atomic Red Team test or PurpleTeam script on a test endpoint to generate the expected telemetry.
+  </Step>
+  <Step title="Validate the alert">
+    Confirm the SIEM alert fires, then tune severity and false-positive filters using the `metadata_fp_risk` and `metadata_severity` columns in the CSV.
+  </Step>
+</Steps>
+
+<Tip>
+  Use the [EDR Telemetry project](https://github.com/tsale/EDR-Telemetry) to understand which events your EDR actually surfaces before writing detections that depend on specific log sources.
+</Tip>

@@ -1,80 +1,233 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Start using the detection lists in your SIEM or detection pipeline in minutes"
 ---
 
-## Get started in three steps
+Each detection list is a CSV file hosted on GitHub. You can reference the raw URL directly from your SIEM, download it manually, or automate regular updates with a scheduled pull. This guide shows the most common integration patterns.
 
-Get your documentation site running locally and make your first customization.
+## Download a list
 
-### Step 1: Set up your local environment
+Every CSV is available at a predictable raw URL:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+```
+https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/<filename>.csv
+```
 
-### Step 2: Deploy your changes
+For example, to download the Windows services list:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+```bash
+curl -O https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_services_names_list.csv
+```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## CSV column structure
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+The CSVs follow a consistent schema. The exact columns vary by list, but the general pattern is:
 
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+| Column | Description |
+|---|---|
+| `service_name`, `http_user_agent`, etc. | The indicator value — the field you match against in your logs |
+| `metadata_tool_name` / `metadata_tool` | The associated tool or software |
+| `metadata_tool_category` / `metadata_category` | Tool category (e.g., RMM, C2, reconnaissance) |
+| `metadata_tool_type` | Classification such as `greyware_tool` or `offensive_tool` |
+| `metadata_severity` | Signal severity: `low`, `medium`, `high`, `critical` |
+| `metadata_fp_risk` | False positive risk rating to help tune thresholds |
+| `metadata_comment` | Human-readable context about the indicator |
+| `metadata_reference` | Source link for the indicator or tool analysis |
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Some lists include additional SIEM-specific metadata columns such as `metadata_*splunk*`, `metadata_*eql*`, `metadata_*elastic*`, `metadata_*sigma*`, and `metadata_*qradar*` with pre-built query fragments or field mappings for each platform.
+</Note>
+
+## Integrate into your SIEM
+
+<Steps>
+  <Step title="Pick the list for your use case">
+    Browse the [Detection Lists](/lists/network/suspicious-ports) tab to find the relevant CSV. For example:
+
+    - Detecting suspicious Windows services: `suspicious_windows_services_names_list.csv`
+    - Detecting suspicious HTTP user agents: `suspicious_http_user_agents_list.csv`
+    - Detecting connections to TOR exit nodes: `Lists/TOR/`
+    - Detecting LOLDriver hashes: `Lists/Drivers/loldrivers_only_hashes_list.csv`
+  </Step>
+  <Step title="Upload or reference the CSV in your SIEM">
+    Use the platform-specific instructions below to load the file as a lookup table or enrichment source.
+  </Step>
+  <Step title="Build a detection rule using the lookup">
+    Write a search or rule that joins your log data against the loaded CSV. See the examples below for each platform.
+  </Step>
+  <Step title="Schedule automatic updates for auto-refreshed lists">
+    For lists that update automatically (TOR, VPN IPs, TLDs, ASNs, LOLDrivers, hijacklibs), set up a scheduled task to re-download the CSV and replace the lookup table on a regular cadence.
+  </Step>
+</Steps>
+
+## Platform examples
+
+<Tabs>
+  <Tab title="Splunk">
+    ### Upload the CSV as a lookup table
+
+    1. In Splunk Web, go to **Settings > Lookups > Lookup table files**.
+    2. Click **New Lookup Table File**.
+    3. Upload `suspicious_windows_services_names_list.csv` and give it a name such as `suspicious_windows_services_names_list`.
+    4. Go to **Settings > Lookups > Lookup definitions** and create a definition pointing to the uploaded file.
+
+    Alternatively, place the CSV directly in `$SPLUNK_HOME/etc/apps/<your_app>/lookups/`.
+
+    ### Search example — suspicious Windows services
+
+    This search joins Windows service creation events against the lookup table and surfaces matches with their severity and tool context:
+
+    ```spl
+    index=windows EventCode=7045
+    | rename Service_Name AS service_name
+    | lookup suspicious_windows_services_names_list service_name OUTPUT metadata_tool_name, metadata_tool_category, metadata_severity, metadata_comment, metadata_reference
+    | where isnotnull(metadata_tool_name)
+    | table _time, ComputerName, service_name, metadata_tool_name, metadata_tool_category, metadata_severity, metadata_comment
+    | sort - metadata_severity
+    ```
+
+    ### Using `inputlookup` to inspect the list
+
+    ```spl
+    | inputlookup suspicious_windows_services_names_list.csv
+    | search metadata_severity="high" OR metadata_severity="critical"
+    | table service_name, metadata_tool_name, metadata_severity, metadata_comment
+    ```
+
+    <Tip>
+      Use `metadata_fp_risk` to filter out entries with a high false positive risk while you're tuning. Start with `metadata_fp_risk="none"` for the highest-confidence matches.
+    </Tip>
+  </Tab>
+  <Tab title="Elastic">
+    ### Load the CSV as an enrichment policy
+
+    1. Upload `suspicious_http_user_agents_list.csv` to Elasticsearch using the **Upload a file** feature in Kibana (**Machine Learning > Data Visualizer > Upload file**).
+    2. Create an enrich policy targeting the uploaded index:
+
+    ```json
+    PUT /_enrich/policy/suspicious_user_agents_policy
+    {
+      "match": {
+        "indices": "suspicious_http_user_agents_list",
+        "match_field": "http_user_agent",
+        "enrich_fields": [
+          "metadata_tool",
+          "metadata_category",
+          "metadata_severity",
+          "metadata_fp_risk",
+          "metadata_description"
+        ]
+      }
+    }
+    ```
+
+    3. Execute the policy to build the enrich index:
+
+    ```json
+    POST /_enrich/policy/suspicious_user_agents_policy/_execute
+    ```
+
+    ### Detection query — suspicious HTTP user agents
+
+    Use a terms lookup or enrich processor in an ingest pipeline. For a direct search:
+
+    ```json
+    GET logs-*/_search
+    {
+      "query": {
+        "terms": {
+          "http.request.headers.user-agent": {
+            "index": "suspicious_http_user_agents_list",
+            "id": "all",
+            "path": "http_user_agent"
+          }
+        }
+      }
+    }
+    ```
+
+    Or use a `bool` query to fetch enriched results with context:
+
+    ```json
+    GET logs-*/_search
+    {
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "http.request.headers.user-agent": [
+                  "SharePointDumper",
+                  "mozilla/4.0 (compatible; msie 8.0; windows nt 5.1; trident/4.0)"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+    ```
+
+    <Tip>
+      For production use, apply the enrich policy as an ingest pipeline processor so every incoming log document is automatically tagged with `metadata_severity` and `metadata_category` at index time.
+    </Tip>
+  </Tab>
+  <Tab title="KQL (Microsoft Sentinel / Defender)">
+    ### Load the CSV as a watchlist
+
+    1. In Microsoft Sentinel, go to **Configuration > Watchlists**.
+    2. Create a new watchlist and upload the CSV file.
+    3. Set the **Search key** to the indicator column (e.g., `service_name` for the Windows services list).
+
+    ### Detection rule — suspicious Windows services
+
+    Once the watchlist is loaded, use it in a KQL analytic rule:
+
+    ```kql
+    let suspicious_services = _GetWatchlist('suspicious_windows_services_names_list')
+        | project service_name, metadata_tool_name, metadata_severity, metadata_comment;
+    Event
+    | where EventID == 7045
+    | extend service_name = tostring(EventData.ServiceName)
+    | join kind=inner suspicious_services on service_name
+    | project TimeGenerated, Computer, service_name, metadata_tool_name, metadata_severity, metadata_comment
+    | sort by TimeGenerated desc
+    ```
+
+    ### Detection rule — suspicious HTTP user agents
+
+    ```kql
+    let suspicious_agents = _GetWatchlist('suspicious_http_user_agents_list')
+        | project http_user_agent, metadata_tool, metadata_severity, metadata_fp_risk;
+    CommonSecurityLog
+    | where isnotempty(RequestClientApplication)
+    | extend http_user_agent = RequestClientApplication
+    | join kind=inner suspicious_agents on http_user_agent
+    | where metadata_fp_risk != "high"
+    | project TimeGenerated, DeviceVendor, SourceIP, DestinationIP, http_user_agent, metadata_tool, metadata_severity
+    | sort by TimeGenerated desc
+    ```
+
+    <Tip>
+      Filter by `metadata_severity` in your watchlist join to create tiered alert severities — map `critical` and `high` to high-priority incidents and `medium` to informational alerts.
+    </Tip>
+  </Tab>
+</Tabs>
+
+## Raw URL reference
+
+Use these raw URLs to download lists directly or reference them in automated pipelines:
+
+| List | Raw URL |
+|---|---|
+| Windows services | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_services_names_list.csv` |
+| HTTP user agents | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_http_user_agents_list.csv` |
+| Suspicious ports | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_ports_list.csv` |
+| Named pipes | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_named_pipe_list.csv` |
+| Windows tasks | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_windows_tasks_list.csv` |
+| DNS-over-HTTPS servers | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/dns_over_https_servers_list.csv` |
+| Ransomware extensions | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/ransomware_extensions_list.csv` |
+
+<Note>
+  All CSV files are available from the `main` branch. Lists that update automatically (TOR, VPN, TLDs, ASNs, LOLDrivers, hijacklibs) will always reflect the latest data at the raw URL — no version pinning is needed unless you require a stable snapshot.
 </Note>

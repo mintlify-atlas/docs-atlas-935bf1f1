@@ -1,0 +1,127 @@
+---
+title: "Phishing Domains"
+description: "Curated phishing domain lists from multiple intelligence sources"
+---
+
+The `Lists/Phishing/` directory aggregates phishing domain and URL intelligence from multiple community and commercial threat feeds, normalized into a consistent CSV format suitable for direct SIEM lookup table ingestion. All lists are updated automatically via GitHub Actions.
+
+```
+Lists/Phishing/
+├── openphish/                          # OpenPhish active phishing URLs
+├── phishing_army/                      # PhishingArmy extended blocklist
+├── phishing-db/                        # phish.co.za active phishing domains
+├── redflag_domains/                    # Red Flag Domains blocklist
+├── living_off_the_cloud_phishing_list.csv  # Phishing via legitimate cloud services
+└── DNSTWIST/                           # Lookalike domain generation (see DNSTWIST page)
+```
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="OpenPhish" icon="fish">
+    Community phishing feed providing active phishing URLs. Updated continuously from real-time phishing submissions.
+
+    **File:** `openphish/openphish_url_list.csv`
+
+    **Columns:** `url`, `metadata_reference`
+  </Card>
+  <Card title="PhishingArmy" icon="user-secret">
+    Extended blocklist maintained by the [PhishingArmy project](https://phishing.army). One of the largest community-sourced phishing domain lists, containing 150,000+ entries.
+
+    **File:** `phishing_army/phishing_army_domains_list.csv`
+
+    **Columns:** `dest_nt_domain`, `metadata_reference`, `metadata_list_last_updated`
+  </Card>
+  <Card title="phishing-db (phish.co.za)" icon="database">
+    Active phishing domains sourced from the phish.co.za intelligence project. Covers 160,000+ entries of currently active phishing infrastructure.
+
+    **File:** `phishing-db/phish_co_za_domains_list.csv`
+
+    **Columns:** `dest_nt_domain`, `metadata_reference`, `metadata_list_last_updated`
+  </Card>
+  <Card title="Red Flag Domains" icon="flag">
+    Curated list of domains flagged as high-risk or newly registered with suspicious characteristics. Sourced from [red.flag.domains](https://red.flag.domains).
+
+    **File:** `redflag_domains/red_flag_domains.csv`
+
+    **Columns:** `dest_nt_domain`, `metadata_reference`
+  </Card>
+</CardGroup>
+
+## Download URLs
+
+| List | Raw CSV |
+|------|---------|
+| OpenPhish URLs | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Phishing/openphish/openphish_url_list.csv` |
+| PhishingArmy domains | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Phishing/phishing_army/phishing_army_domains_list.csv` |
+| phish.co.za domains | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Phishing/phishing-db/phish_co_za_domains_list.csv` |
+| Red Flag Domains | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Phishing/redflag_domains/red_flag_domains.csv` |
+| Living off the Cloud | `https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/Phishing/living_off_the_cloud_phishing_list.csv` |
+
+## Living Off the Cloud
+
+**File:** `living_off_the_cloud_phishing_list.csv`
+
+Attackers increasingly host phishing pages and C2 infrastructure on legitimate cloud platforms to bypass domain reputation controls. This list tracks phishing patterns using trusted cloud service domains.
+
+**Columns:** `url`, `dest_nt_domain`, `http_method`, `metadata_datasource`, `metadata_reference`
+
+### Example Patterns
+
+| Destination Domain | HTTP Method | Notes |
+|-------------------|-------------|-------|
+| `*.blob.core.windows.net` | POST / PUT | Azure Blob Storage used for payload hosting or data exfiltration |
+| `*.azurewebsites.net` | POST / PUT | Azure Web Apps hosting phishing kits |
+
+<Warning>
+  These patterns match legitimate Azure traffic as well. Tune detections to exclude known-good applications in your environment and focus on POST/PUT requests to unexpected blob storage accounts from endpoints that do not normally use Azure services.
+</Warning>
+
+## Detection
+
+### Data Sources
+
+<CardGroup cols={3}>
+  <Card title="DNS Logs" icon="globe">
+    DNS query logs capture domain resolution attempts before any HTTP connection. Match `query` field against `dest_nt_domain` column.
+  </Card>
+  <Card title="Proxy / Web Gateway" icon="shield">
+    Proxy logs capture full URLs. Match against both `url` (OpenPhish) and `dest_nt_domain` columns.
+  </Card>
+  <Card title="Email Gateway" icon="envelope">
+    Extract domains and URLs from email links and match against phishing domain lists at delivery time.
+  </Card>
+</CardGroup>
+
+### Splunk — DNS Lookup
+
+```spl
+index=dns
+| lookup phishing_army_domains_list dest_nt_domain AS query OUTPUT metadata_reference, metadata_list_last_updated
+| where isnotnull(metadata_reference)
+| table _time, src_ip, query, metadata_reference
+```
+
+### Splunk — Proxy URL Match (OpenPhish)
+
+```spl
+index=proxy
+| lookup openphish_url_list url AS url OUTPUT metadata_reference
+| where isnotnull(metadata_reference)
+| table _time, src_ip, url, metadata_reference
+```
+
+### Elastic — KQL (DNS)
+
+```kql
+dns.question.name: (
+  "0-230-23.rest" OR
+  "00-202828spas.cfd"
+)
+```
+
+For production use, ingest the full domain list into an Elasticsearch terms-level enrichment policy rather than specifying individual domains in KQL.
+
+<Tip>
+  For lookalike domain detection targeting your own organization's domains, see the [DNSTWIST](/lists/phishing/dnstwist) page, which covers pre-generated lookalike domain lists and an automated monitoring workflow.
+</Tip>

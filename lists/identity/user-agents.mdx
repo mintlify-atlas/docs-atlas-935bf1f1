@@ -1,0 +1,91 @@
+---
+title: "Suspicious HTTP User Agents"
+description: "User agent strings associated with offensive tools, malware C2, and scanners"
+---
+
+The HTTP `User-Agent` header identifies the client making a request. Legitimate browsers and applications send predictable, well-known strings. Offensive tools, malware, and scanners typically send hardcoded default strings, minimal strings, or strings crafted to blend in—all of which are detectable patterns.
+
+Monitoring user agents in proxy, web server, or EDR network telemetry is one of the lowest-friction detection controls available: the data is already collected, and the signal-to-noise ratio is high for many entries in this list.
+
+<Info>
+  Read the full threat hunting guide on this topic: [Threat Hunting Suspicious User Agents](https://mthcht.medium.com/threat-hunting-suspicious-user-agents-3dd764470bd0)
+</Info>
+
+## List: suspicious\_http\_user\_agents\_list.csv
+
+**Download:**
+`https://github.com/mthcht/awesome-lists/blob/main/Lists/suspicious_http_user_agents_list.csv`
+
+**Raw CSV:**
+`https://raw.githubusercontent.com/mthcht/awesome-lists/main/Lists/suspicious_http_user_agents_list.csv`
+
+### CSV Columns
+
+| Column | Description |
+|--------|-------------|
+| `http_user_agent` | The user agent string or pattern (wildcards supported) |
+| `metadata_description` | What the user agent indicates or which tool/malware uses it |
+| `metadata_tool` | Name of the offensive tool, malware family, or scanner |
+| `metadata_category` | Category: `Malware`, `Reconnaissance`, `Exploit`, `Compliance`, etc. |
+| `metadata_link` | Reference URL (GitHub repo, blog post, vendor advisory) |
+| `metadata_priority` | Triage priority: `high`, `medium`, `low` |
+| `metadata_fp_risk` | False positive risk: `none`, `low`, `medium`, `high` |
+| `metadata_severity` | Severity of the finding |
+| `metadata_usage` | Intended use: `Detection rule` or `Hunting` |
+| `metadata_flow_from_external` | Applies to inbound traffic from external sources |
+| `metadata_flow_from_internal` | Applies to outbound traffic from internal hosts |
+| `metadata_flow_to_internal` | Applies to traffic directed to internal endpoints |
+| `metadata_flow_to_external` | Applies to traffic directed to external endpoints |
+| `metadata_for_successful_external_login_events` | Relevant for login telemetry |
+| `metadata_comment` | Additional analyst notes |
+
+### Example Entries
+
+| User Agent | Tool | Priority |
+|-----------|------|----------|
+| `SharePointDumper` | SharePointDumper (Graph API enumeration) | high |
+| `mozilla/4.0 (compatible; msie 8.0; windows nt 5.1; trident/4.0)` | Retired IE string used in supply chain attacks | medium |
+| `*DecoyLoader*` | DecoyLoader malware C2 | high |
+| `React2ShellScanner/*` | Reac2Shell scanner | medium |
+
+## Detection
+
+### Data Sources
+
+<CardGroup cols={2}>
+  <Card title="Proxy / Web Gateway Logs" icon="globe">
+    Web proxy logs contain the full `User-Agent` header for every HTTP/HTTPS request. This is the primary detection source.
+  </Card>
+  <Card title="EDR Network Telemetry" icon="shield">
+    Endpoint detection agents that inspect network traffic can surface user agents even for encrypted connections if they perform TLS inspection or capture process-level HTTP metadata.
+  </Card>
+</CardGroup>
+
+### Splunk — Proxy Lookup
+
+Load the CSV as a Splunk lookup table (`suspicious_http_user_agents_list.csv`), then run:
+
+```spl
+index=proxy OR index=web
+| eval ua=lower(http_user_agent)
+| lookup suspicious_http_user_agents_list http_user_agent AS ua OUTPUT metadata_tool, metadata_severity, metadata_priority, metadata_fp_risk
+| where isnotnull(metadata_tool)
+| table _time, src_ip, dest, http_user_agent, metadata_tool, metadata_severity, metadata_priority, metadata_fp_risk
+| sort - metadata_priority
+```
+
+### Elastic — KQL
+
+```kql
+http.request.headers.user_agent: (
+  "SharePointDumper" OR
+  "*DecoyLoader*" OR
+  "React2ShellScanner/*"
+)
+```
+
+For broader coverage, ingest the CSV into an Elastic enrichment policy and use `enrich` in an Elasticsearch ingest pipeline or runtime field.
+
+<Warning>
+  Some user agents carry `metadata_fp_risk: medium` or `metadata_fp_risk: high`. Always validate hits against the source host, destination, and surrounding process context before escalating.
+</Warning>
